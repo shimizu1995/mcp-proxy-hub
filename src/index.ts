@@ -11,6 +11,17 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './mcp-proxy.js';
+import { createDefaultLogger, LogLevel } from './utils/logger.js';
+
+// ロガーの初期化
+const logger = createDefaultLogger({
+  level: process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO,
+});
+
+// 標準出力をロガーにリダイレクト
+logger.redirectConsole();
+
+logger.info(`Server starting up`);
 
 async function main() {
   const transport = new StdioServerTransport();
@@ -20,6 +31,8 @@ async function main() {
 
   // Cleanup on exit
   process.on('SIGINT', async () => {
+    logger.info('Server shutting down...');
+    logger.close();
     await cleanup();
     await server.close();
     process.exit(0);
@@ -27,6 +40,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Server error:', error);
+  logger.error('Server error:', error);
+  logger.close();
   process.exit(1);
 });
