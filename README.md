@@ -10,17 +10,20 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
 ## Features
 
 ### Resource Management
+
 - Discover and connect to multiple MCP resource servers
 - Aggregate resources from all connected servers
 - Maintain consistent URI schemes across servers
 - Handle resource routing and resolution
 
 ### Tool Aggregation
+
 - Expose tools from all connected servers
 - Route tool calls to appropriate backend servers
 - Maintain tool state and handle responses
 
 ### Prompt Handling
+
 - Aggregate prompts from all connected servers
 - Route prompt requests to appropriate backends
 - Handle multi-server prompt responses
@@ -34,6 +37,7 @@ cp config.example.json config.json
 ```
 
 Example config structure:
+
 ```json
 {
   "servers": [
@@ -63,6 +67,7 @@ Example config structure:
 ```
 
 The config file must be provided when running the server:
+
 ```bash
 MCP_CONFIG_PATH=./config.json mcp-proxy-server
 ```
@@ -70,21 +75,25 @@ MCP_CONFIG_PATH=./config.json mcp-proxy-server
 ## Development
 
 Install dependencies:
+
 ```bash
 npm install
 ```
 
 Build the server:
+
 ```bash
 npm run build
 ```
 
 For development with auto-rebuild:
+
 ```bash
 npm run watch
 ```
 
 For development with continuous run:
+
 ```bash
 # Stdio
 npm run dev

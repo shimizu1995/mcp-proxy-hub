@@ -10,11 +10,7 @@
       "name": "Example Server 2",
       "transport": {
         "command": "npx",
-        "args": [
-          "@example/mcp-server",
-          "--option",
-          "value"
-        ]
+        "args": ["@example/mcp-server", "--option", "value"]
       }
     },
     {

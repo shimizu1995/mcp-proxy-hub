@@ -9,8 +9,8 @@
  * - Summarizing all notes via a prompt
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "./mcp-proxy.js";
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { createServer } from './mcp-proxy.js';
 
 async function main() {
   const transport = new StdioServerTransport();
@@ -19,7 +19,7 @@ async function main() {
   await server.connect(transport);
 
   // Cleanup on exit
-  process.on("SIGINT", async () => {
+  process.on('SIGINT', async () => {
     await cleanup();
     await server.close();
     process.exit(0);
@@ -27,6 +27,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  console.error('Server error:', error);
   process.exit(1);
 });

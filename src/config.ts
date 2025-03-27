@@ -1,20 +1,19 @@
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
-
 export type TransportConfigStdio = {
-  type?: 'stdio'
+  type?: 'stdio';
   command: string;
   args?: string[];
-  env?: string[]
-}
+  env?: string[];
+};
 
 export type TransportConfigSSE = {
-  type: 'sse'
-  url: string
-}
+  type: 'sse';
+  url: string;
+};
 
-export type TransportConfig = TransportConfigSSE | TransportConfigStdio
+export type TransportConfig = TransportConfigSSE | TransportConfigStdio;
 export interface ServerConfig {
   name: string;
   transport: TransportConfig;
@@ -25,8 +24,9 @@ export interface Config {
 }
 
 export const loadConfig = async (): Promise<Config> => {
+  // load MCP_CONFIG_PATH environment variable
   try {
-    const configPath = resolve(process.cwd(), 'config.json');
+    const configPath = process.env.MCP_CONFIG_PATH ?? resolve(process.cwd(), 'config.json');
     const fileContents = await readFile(configPath, 'utf-8');
     return JSON.parse(fileContents);
   } catch (error) {
@@ -34,4 +34,4 @@ export const loadConfig = async (): Promise<Config> => {
     // Return empty config if file doesn't exist
     return { servers: [] };
   }
-}; 
+};

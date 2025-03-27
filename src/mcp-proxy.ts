@@ -1,4 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   GetPromptRequestSchema,
@@ -15,14 +15,14 @@ import {
   ListResourceTemplatesResultSchema,
   ResourceTemplate,
   CompatibilityCallToolResultSchema,
-  GetPromptResultSchema
-} from "@modelcontextprotocol/sdk/types.js";
+  GetPromptResultSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { createClients, ConnectedClient } from './client.js';
-import { Config, loadConfig } from './config.js';
+import { loadConfig } from './config.js';
 import { z } from 'zod';
 import * as eventsource from 'eventsource';
 
-global.EventSource = eventsource.EventSource
+global.EventSource = eventsource.EventSource;
 
 export const createServer = async () => {
   // Load configuration and connect to servers
@@ -37,8 +37,8 @@ export const createServer = async () => {
 
   const server = new Server(
     {
-      name: "mcp-proxy-server",
-      version: "1.0.0",
+      name: 'mcp-proxy-server',
+      version: '1.0.0',
     },
     {
       capabilities: {
@@ -46,7 +46,7 @@ export const createServer = async () => {
         resources: { subscribe: true },
         tools: {},
       },
-    },
+    }
   );
 
   // List Tools Handler
@@ -60,18 +60,18 @@ export const createServer = async () => {
           {
             method: 'tools/list',
             params: {
-              _meta: request.params?._meta
-            }
+              _meta: request.params?._meta,
+            },
           },
           ListToolsResultSchema
         );
 
         if (result.tools) {
-          const toolsWithSource = result.tools.map(tool => {
+          const toolsWithSource = result.tools.map((tool) => {
             toolToClientMap.set(tool.name, connectedClient);
             return {
               ...tool,
-              description: `[${connectedClient.name}] ${tool.description || ''}`
+              description: `[${connectedClient.name}] ${tool.description || ''}`,
             };
           });
           allTools.push(...toolsWithSource);
@@ -104,9 +104,9 @@ export const createServer = async () => {
             name,
             arguments: args || {},
             _meta: {
-              progressToken: request.params._meta?.progressToken
-            }
-          }
+              progressToken: request.params._meta?.progressToken,
+            },
+          },
         },
         CompatibilityCallToolResultSchema
       );
@@ -136,9 +136,9 @@ export const createServer = async () => {
             name,
             arguments: request.params.arguments || {},
             _meta: request.params._meta || {
-              progressToken: undefined
-            }
-          }
+              progressToken: undefined,
+            },
+          },
         },
         GetPromptResultSchema
       );
@@ -164,19 +164,19 @@ export const createServer = async () => {
             params: {
               cursor: request.params?.cursor,
               _meta: request.params?._meta || {
-                progressToken: undefined
-              }
-            }
+                progressToken: undefined,
+              },
+            },
           },
           ListPromptsResultSchema
         );
 
         if (result.prompts) {
-          const promptsWithSource = result.prompts.map(prompt => {
+          const promptsWithSource = result.prompts.map((prompt) => {
             promptToClientMap.set(prompt.name, connectedClient);
             return {
               ...prompt,
-              description: `[${connectedClient.name}] ${prompt.description || ''}`
+              description: `[${connectedClient.name}] ${prompt.description || ''}`,
             };
           });
           allPrompts.push(...promptsWithSource);
@@ -188,7 +188,7 @@ export const createServer = async () => {
 
     return {
       prompts: allPrompts,
-      nextCursor: request.params?.cursor
+      nextCursor: request.params?.cursor,
     };
   });
 
@@ -204,18 +204,18 @@ export const createServer = async () => {
             method: 'resources/list',
             params: {
               cursor: request.params?.cursor,
-              _meta: request.params?._meta
-            }
+              _meta: request.params?._meta,
+            },
           },
           ListResourcesResultSchema
         );
 
         if (result.resources) {
-          const resourcesWithSource = result.resources.map(resource => {
+          const resourcesWithSource = result.resources.map((resource) => {
             resourceToClientMap.set(resource.uri, connectedClient);
             return {
               ...resource,
-              name: `[${connectedClient.name}] ${resource.name || ''}`
+              name: `[${connectedClient.name}] ${resource.name || ''}`,
             };
           });
           allResources.push(...resourcesWithSource);
@@ -227,7 +227,7 @@ export const createServer = async () => {
 
     return {
       resources: allResources,
-      nextCursor: undefined
+      nextCursor: undefined,
     };
   });
 
@@ -246,8 +246,8 @@ export const createServer = async () => {
           method: 'resources/read',
           params: {
             uri,
-            _meta: request.params._meta
-          }
+            _meta: request.params._meta,
+          },
         },
         ReadResourceResultSchema
       );
@@ -269,18 +269,20 @@ export const createServer = async () => {
             params: {
               cursor: request.params?.cursor,
               _meta: request.params?._meta || {
-                progressToken: undefined
-              }
-            }
+                progressToken: undefined,
+              },
+            },
           },
           ListResourceTemplatesResultSchema
         );
 
         if (result.resourceTemplates) {
-          const templatesWithSource = result.resourceTemplates.map(template => ({
+          const templatesWithSource = result.resourceTemplates.map((template) => ({
             ...template,
             name: `[${connectedClient.name}] ${template.name || ''}`,
-            description: template.description ? `[${connectedClient.name}] ${template.description}` : undefined
+            description: template.description
+              ? `[${connectedClient.name}] ${template.description}`
+              : undefined,
           }));
           allTemplates.push(...templatesWithSource);
         }
@@ -291,7 +293,7 @@ export const createServer = async () => {
 
     return {
       resourceTemplates: allTemplates,
-      nextCursor: request.params?.cursor
+      nextCursor: request.params?.cursor,
     };
   });
 
