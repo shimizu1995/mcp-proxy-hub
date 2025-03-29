@@ -25,25 +25,25 @@
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0",
+    "@modelcontextprotocol/sdk": "1.8.0",
     "@types/cors": "^2.8.17",
     "cors": "^2.8.5",
-    "eventsource": "^3.0.2",
-    "express": "^4.21.1",
-    "zod-to-json-schema": "^3.23.5"
+    "eventsource": "^3.0.6",
+    "express": "^4.21.2",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
-    "@types/express": "^5.0.0",
-    "@types/node": "^20.11.24",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.14",
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.5",
     "globals": "^16.0.0",
     "nodemon": "^3.1.9",
     "prettier": "^3.5.3",
-    "tsx": "^4.19.2",
-    "typescript": "^5.3.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
     "typescript-eslint": "^8.28.0"
   }
 }
