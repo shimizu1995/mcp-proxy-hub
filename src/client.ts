@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { ServerConfig } from './config.js';
+import { ServerTransportConfig } from './config.js';
 
 const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
 export interface ConnectedClient {
@@ -12,18 +12,20 @@ export interface ConnectedClient {
 }
 
 const createClient = (
-  server: ServerConfig
+  serverName: string,
+  config: ServerTransportConfig
 ): { client: Client | undefined; transport: Transport | undefined } => {
   let transport: Transport | null = null;
   try {
-    if (server.transport.type === 'sse') {
-      transport = new SSEClientTransport(new URL(server.transport.url));
+    if (config.type === 'sse') {
+      transport = new SSEClientTransport(new URL(config.url));
     } else {
+      console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
       transport = new StdioClientTransport({
-        command: server.transport.command,
-        args: server.transport.args,
-        env: server.transport.env
-          ? server.transport.env.reduce(
+        command: config.command,
+        args: config.args,
+        env: config.env
+          ? config.env.reduce(
               (o, v) => ({
                 [v]: process.env[v] || '',
               }),
@@ -33,14 +35,11 @@ const createClient = (
       });
     }
   } catch (error) {
-    console.error(
-      `Failed to create transport ${server.transport.type || 'stdio'} to ${server.name}:`,
-      error
-    );
+    console.error(`Failed to create transport ${config.type || 'stdio'} to ${serverName}:`, error);
   }
 
   if (!transport) {
-    console.warn(`Transport ${server.name} not available.`);
+    console.warn(`Transport ${serverName} not available.`);
     return { transport: undefined, client: undefined };
   }
 
@@ -61,11 +60,13 @@ const createClient = (
   return { client, transport };
 };
 
-export const createClients = async (servers: ServerConfig[]): Promise<ConnectedClient[]> => {
+export const createClients = async (
+  mcpServers: Record<string, ServerTransportConfig>
+): Promise<ConnectedClient[]> => {
   const clients: ConnectedClient[] = [];
 
-  for (const server of servers) {
-    console.log(`Connecting to server: ${server.name}`);
+  for (const [serverName, config] of Object.entries(mcpServers)) {
+    console.log(`Connecting to server: ${serverName}`);
 
     const waitFor = 2500;
     const retries = 3;
@@ -73,18 +74,18 @@ export const createClients = async (servers: ServerConfig[]): Promise<ConnectedC
     let retry = true;
 
     while (retry) {
-      const { client, transport } = createClient(server);
+      const { client, transport } = createClient(serverName, config);
       if (!client || !transport) {
         break;
       }
 
       try {
         await client.connect(transport);
-        console.log(`Connected to server: ${server.name}`);
+        console.log(`Connected to server: ${serverName}`);
 
         clients.push({
           client,
-          name: server.name,
+          name: serverName,
           cleanup: async () => {
             await transport.close();
           },
@@ -92,7 +93,7 @@ export const createClients = async (servers: ServerConfig[]): Promise<ConnectedC
 
         break;
       } catch (error) {
-        console.error(`Failed to connect to ${server.name}:`, error);
+        console.error(`Failed to connect to ${serverName}:`, error);
         count++;
         retry = count < retries;
         if (retry) {
@@ -101,7 +102,7 @@ export const createClients = async (servers: ServerConfig[]): Promise<ConnectedC
           } catch {
             /* empty */
           }
-          console.log(`Retry connection to ${server.name} in ${waitFor}ms (${count}/${retries})`);
+          console.log(`Retry connection to ${serverName} in ${waitFor}ms (${count}/${retries})`);
           await sleep(waitFor);
         }
       }

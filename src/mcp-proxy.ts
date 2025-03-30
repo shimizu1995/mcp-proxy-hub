@@ -21,7 +21,7 @@ export const createServer = async () => {
 
   // Load configuration and connect to servers
   const config = await loadConfig();
-  const connectedClients = await createClients(config.servers);
+  const connectedClients = await createClients(config.mcpServers);
   console.log(`Connected to ${connectedClients.length} servers`);
 
   // Create the MCP server

@@ -13,25 +13,23 @@ export type TransportConfigSSE = {
   url: string;
 };
 
-export type TransportConfig = TransportConfigSSE | TransportConfigStdio;
-export interface ServerConfig {
-  name: string;
-  transport: TransportConfig;
-}
+export type ServerTransportConfig = TransportConfigSSE | TransportConfigStdio;
+
+export type ServerName = string;
 
 export interface Config {
-  servers: ServerConfig[];
+  mcpServers: Record<ServerName, ServerTransportConfig>;
 }
 
 export const loadConfig = async (): Promise<Config> => {
-  // load MCP_CONFIG_PATH environment variable
   try {
     const configPath = process.env.MCP_CONFIG_PATH ?? resolve(process.cwd(), 'config.json');
+    console.info('Loading config from:', configPath);
     const fileContents = await readFile(configPath, 'utf-8');
     return JSON.parse(fileContents);
   } catch (error) {
     console.error('Error loading config.json:', error);
     // Return empty config if file doesn't exist
-    return { servers: [] };
+    return { mcpServers: {} };
   }
 };

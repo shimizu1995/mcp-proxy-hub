@@ -102,6 +102,7 @@ export class Logger {
    * consoleオブジェクトのメソッドをこのロガーにリダイレクト
    */
   redirectConsole(): void {
+    console.debug = this.debug.bind(this);
     console.log = this.info.bind(this);
     console.info = this.info.bind(this);
     console.warn = this.warn.bind(this);

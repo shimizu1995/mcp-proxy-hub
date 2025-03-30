@@ -1,4 +1,4 @@
-# MCP Proxy Server
+# MCP Coordinator
 
 An MCP proxy server that aggregates and serves multiple MCP resource servers through a single interface. This server acts as a central hub that can:
 
@@ -40,29 +40,23 @@ Example config structure:
 
 ```json
 {
-  "servers": [
-    {
-      "name": "Server 1",
-      "transport": {
-        "command": "/path/to/server1/build/index.js"
-      }
+  "mcpServers": {
+    "Example Server 1": {
+      "command": "/path/to/server1/build/index.js"
     },
-    {
-      "name": "Server 2",
-      "transport": {
-        "command": "server2-command",
-        "args": ["--option1", "value1"],
-        "env": ["SECRET_API_KEY"]
-      }
+    "Example Server 2": {
+      "command": "npx",
+      "args": [
+        "@example/mcp-server",
+        "--option",
+        "value"
+      ]
     },
-    {
-      "name": "Example Server 3",
-      "transport": {
-        "type": "sse",
-        "url": "http://localhost:8080/sse"
-      }
+    "Example Server 3": {
+      "type": "sse",
+      "url": "http://example.com/mcp"
     }
-  ]
+  }
 }
 ```
 
@@ -111,8 +105,8 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "mcp-proxy": {
-      "command": "/path/to/mcp-proxy-server/build/index.js",
+    "mcp-coordinator": {
+      "command": "/path/to/mcp-coordinator/build/index.js",
       "env": {
         "MCP_CONFIG_PATH": "/absolute/path/to/your/config.json",
         "KEEP_SERVER_OPEN": "1"
