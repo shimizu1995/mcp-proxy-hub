@@ -12,9 +12,11 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './mcp-proxy.js';
 import { createDefaultLogger, LogLevel } from './utils/logger.js';
+import 'dotenv/config';
 
 // ロガーの初期化
 const logger = createDefaultLogger({
+  dirPath: process.env.LOG_DIRECTORY_PATH,
   level: process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO,
 });
 

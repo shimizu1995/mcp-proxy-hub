@@ -125,8 +125,7 @@ export function createDefaultLogger(options?: {
   fileName?: string;
   level?: LogLevel;
 }): Logger {
-  const homeDir = process.env.HOME || process.env.USERPROFILE;
-  const defaultDir = `${homeDir ?? '/tmp'}/.mcp-proxy-server`;
+  const defaultDir = '/tmp/mcp-coordinator';
 
   return new Logger({
     dirPath: options?.dirPath ?? defaultDir,

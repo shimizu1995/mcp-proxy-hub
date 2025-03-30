@@ -19,6 +19,9 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
@@ -28,6 +31,7 @@
     "@modelcontextprotocol/sdk": "1.8.0",
     "@types/cors": "^2.8.17",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "eventsource": "^3.0.6",
     "express": "^4.21.2",
     "zod-to-json-schema": "^3.24.5"
@@ -36,6 +40,7 @@
     "@eslint/js": "^9.23.0",
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.14",
+    "@vitest/coverage-v8": "^3.0.9",
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.5",
@@ -44,6 +49,7 @@
     "prettier": "^3.5.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.28.0"
+    "typescript-eslint": "^8.28.0",
+    "vitest": "^3.0.9"
   }
 }
