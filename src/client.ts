@@ -21,20 +21,24 @@ const createClient = (
       transport = new SSEClientTransport(new URL(config.url));
     } else {
       console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
+      console.debug(`cwd is ${process.cwd()}`);
+      console.debug(`command:${config.command}`);
+      console.debug(`args: `, config.args);
+      console.debug(`env: `, config.env);
+
+      const env = {
+        ...process.env,
+        ...(config.env ?? {}),
+      } as Record<string, string>;
+
       transport = new StdioClientTransport({
         command: config.command,
         args: config.args,
-        env: config.env
-          ? config.env.reduce(
-              (o, v) => ({
-                [v]: process.env[v] || '',
-              }),
-              {}
-            )
-          : undefined,
+        env,
       });
     }
   } catch (error) {
+    console.error(error);
     console.error(`Failed to create transport ${config.type || 'stdio'} to ${serverName}:`, error);
   }
 
