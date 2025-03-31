@@ -46,11 +46,7 @@ Example config structure:
     },
     "Example Server 2": {
       "command": "npx",
-      "args": [
-        "@example/mcp-server",
-        "--option",
-        "value"
-      ]
+      "args": ["@example/mcp-server", "--option", "value"]
     },
     "Example Server 3": {
       "type": "sse",

@@ -5,15 +5,42 @@
     },
     "Example Server 2": {
       "command": "npx",
-      "args": [
-        "@example/mcp-server",
-        "--option",
-        "value"
-      ]
+      "args": ["@example/mcp-server", "--option", "value"]
     },
     "Example Server 3": {
       "type": "sse",
       "url": "http://example.com/mcp"
+    }
+  },
+  "tools": {
+    "new tool": {
+      "description": "Start the development server and manage resources",
+      "subtools": {
+        "Example Server 1": {
+          "tools": [
+            {
+              "name": "start",
+              "description": "Start the development server"
+            },
+            {
+              "name": "build",
+              "description": "Build the project"
+            }
+          ]
+        },
+        "Example Server 2": {
+          "tools": [
+            {
+              "name": "deploy",
+              "description": "Deploy the application"
+            },
+            {
+              "name": "test",
+              "description": "Run tests"
+            }
+          ]
+        }
+      }
     }
   }
 }

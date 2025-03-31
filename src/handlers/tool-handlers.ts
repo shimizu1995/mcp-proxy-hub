@@ -8,6 +8,8 @@ import {
 import { ConnectedClient } from '../client.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { loadConfig } from '../config.js';
+import { createCustomTools, handleCustomToolCall } from '../custom-tools.js';
 
 /**
  * Registers list tools handler on the server
@@ -20,6 +22,7 @@ export function registerListToolsHandler(
     const allTools: Tool[] = [];
     clientMaps.clearToolMap();
 
+    // First, collect tools from all connected MCP servers
     for (const connectedClient of connectedClients) {
       try {
         const result = await connectedClient.client.request(
@@ -47,6 +50,17 @@ export function registerListToolsHandler(
       }
     }
 
+    // Then, add custom tools from config
+    try {
+      // TODO Don't load config here
+      const config = await loadConfig();
+      const customTools = createCustomTools(config, connectedClients, allTools);
+      console.log('Custom tools created:', customTools);
+      allTools.push(...customTools);
+    } catch (error) {
+      console.error('Error creating custom tools:', error);
+    }
+
     return { tools: allTools };
   });
 }
@@ -57,8 +71,21 @@ export function registerListToolsHandler(
 export function registerCallToolHandler(server: Server): void {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+
+    // Check if this is a custom tool
     const clientForTool = clientMaps.getClientForTool(name);
 
+    if (clientForTool && clientForTool.name === 'custom') {
+      try {
+        console.log(`Handling custom tool call: ${name}`);
+        return await handleCustomToolCall(name, args, request.params._meta);
+      } catch (error) {
+        console.error(`Error handling custom tool call for ${name}:`, error);
+        throw error;
+      }
+    }
+
+    // Standard tool handling for all other tools
     if (!clientForTool) {
       throw new Error(`Unknown tool: ${name}`);
     }

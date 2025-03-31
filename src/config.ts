@@ -17,8 +17,24 @@ export type ServerTransportConfig = TransportConfigSSE | TransportConfigStdio;
 
 export type ServerName = string;
 
+export type ToolDefinition = {
+  name: string;
+  description: string;
+  // Additional tool properties can be added here
+};
+
+export type SubtoolDefinition = {
+  tools: ToolDefinition[];
+};
+
+export type ToolConfig = {
+  description: string;
+  subtools?: Record<ServerName, SubtoolDefinition>;
+};
+
 export interface Config {
   mcpServers: Record<ServerName, ServerTransportConfig>;
+  tools?: Record<string, ToolConfig>;
 }
 
 export const loadConfig = async (): Promise<Config> => {
