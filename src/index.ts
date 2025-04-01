@@ -16,8 +16,8 @@ import 'dotenv/config';
 
 // ロガーの初期化
 const logger = createDefaultLogger({
-  dirPath: process.env.LOG_DIRECTORY_PATH,
-  level: process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO,
+  dirPath: process.env.MCP_PROXY_LOG_DIRECTORY_PATH,
+  level: process.env.MCP_PROXY_LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO,
 });
 
 // 標準出力をロガーにリダイレクト

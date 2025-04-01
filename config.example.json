@@ -1,11 +1,13 @@
 {
   "mcpServers": {
     "Example Server 1": {
-      "command": "/path/to/server1/build/index.js"
+      "command": "/path/to/server1/build/index.js",
+      "exposedTools": ["tool1", "tool2"]
     },
     "Example Server 2": {
       "command": "npx",
-      "args": ["@example/mcp-server", "--option", "value"]
+      "args": ["@example/mcp-server", "--option", "value"],
+      "hiddenTools": ["tool3"]
     },
     "Example Server 3": {
       "type": "sse",

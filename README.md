@@ -59,7 +59,7 @@ Example config structure:
 The config file must be provided when running the server:
 
 ```bash
-MCP_CONFIG_PATH=./config.json mcp-proxy-server
+MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-server
 ```
 
 ## Development
@@ -104,7 +104,7 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
     "mcp-coordinator": {
       "command": "/path/to/mcp-coordinator/build/index.js",
       "env": {
-        "MCP_CONFIG_PATH": "/absolute/path/to/your/config.json",
+        "MCP_PROXY_CONFIG_PATH": "/absolute/path/to/your/config.json",
         "KEEP_SERVER_OPEN": "1"
       }
     }

@@ -20,6 +20,10 @@ const customClient: ConnectedClient = {
 // Format: "toolName:serverName:toolName" -> ConnectedClient
 export const customToolMaps = new Map<string, ConnectedClient>();
 
+export type ToolWithServerName = Tool & {
+  serverName: string;
+};
+
 /**
  * Creates custom tools defined in the config file
  *
@@ -30,7 +34,7 @@ export const customToolMaps = new Map<string, ConnectedClient>();
 export function createCustomTools(
   config: Config,
   connectedClients: ConnectedClient[],
-  allTools: Tool[]
+  allTools: ToolWithServerName[]
 ): Tool[] {
   const customTools: Tool[] = [];
 
@@ -54,20 +58,20 @@ export function createCustomTools(
 /**
  * Creates a single custom tool based on its config
  *
- * @param toolName Name of the tool
+ * @param customToolName Name of the tool
  * @param toolConfig Configuration for the tool
  * @param connectedClients Array of connected MCP clients
  * @returns Tool object or null if creation failed
  */
 function createCustomTool(
-  toolName: string,
+  customToolName: string,
   toolConfig: ToolConfig,
   connectedClients: ConnectedClient[],
-  allTools: Tool[]
+  allTools: ToolWithServerName[]
 ): Tool | null {
   try {
     // Create combined description from all subtools
-    let description = toolConfig.description || `Execute ${toolName} commands`;
+    let description = toolConfig.description || `Execute ${customToolName} commands`;
 
     // Store a map of all subtool tools for reference during tool call
     if (toolConfig.subtools) {
@@ -79,7 +83,7 @@ function createCustomTool(
         const client = connectedClients.find((c) => c.name === serverName);
         if (!client) {
           console.warn(
-            `Server ${serverName} referenced in ${toolName} tool config not found in connected clients`
+            `Server ${serverName} referenced in ${customToolName} tool config not found in connected clients`
           );
           return;
         }
@@ -91,20 +95,25 @@ function createCustomTool(
         subtool.tools.forEach((tool) => {
           const toolName = tool.name;
 
+          const sameTool = allTools.find((t) => t.serverName == serverName && t.name == toolName);
           description += (() => {
             if (tool.description && tool.description.length > 0) {
               return `\n- ${tool.name}: ${tool.description}`;
             }
 
-            const sameTool = allTools.find((t) => t.name === toolName);
             if (sameTool) {
               return `\n- ${tool.name}: ${sameTool.description}`;
             }
             return `\n- ${tool.name}`;
           })();
 
+          if (sameTool) {
+            // add inputSchema info
+            description += `\n  - inputSchema: ${JSON.stringify(sameTool.inputSchema)}\n`;
+          }
+
           // Map the custom tool subtool to its client
-          const customToolKey = `${toolName}:${serverName}:${tool.name}`;
+          const customToolKey = `${customToolName}:${serverName}:${tool.name}`;
           customToolMaps.set(customToolKey, client);
         });
       });
@@ -112,7 +121,7 @@ function createCustomTool(
 
     // Add schema for tool parameters
     const tool: Tool = {
-      name: toolName,
+      name: customToolName,
       description,
       inputSchema: {
         type: 'object',
@@ -136,11 +145,11 @@ function createCustomTool(
     };
 
     // Map tool name to itself (custom tool is handled specially)
-    clientMaps.mapToolToClient(toolName, customClient);
+    clientMaps.mapToolToClient(customToolName, customClient);
 
     return tool;
   } catch (error) {
-    console.error(`Error creating custom tool ${toolName}:`, error);
+    console.error(`Error creating custom tool ${customToolName}:`, error);
     return null;
   }
 }
@@ -148,13 +157,13 @@ function createCustomTool(
 /**
  * Handles calls to a custom tool
  *
- * @param toolName Name of the custom tool
+ * @param customToolName Name of the custom tool
  * @param args Arguments passed to the tool
  * @returns Result of calling the subtool
  */
 export async function handleCustomToolCall(
-  toolName: string,
-  args: Record<string, unknown> | undefined,
+  customToolName: string,
+  requestArgs: Record<string, unknown> | undefined,
   meta?:
     | z.objectOutputType<
         {
@@ -165,30 +174,36 @@ export async function handleCustomToolCall(
       >
     | undefined
 ) {
-  const {
-    server,
-    tool,
-    args: toolArgs = {},
-  } = args as {
+  if (!requestArgs) {
+    throw new Error('Missing required parameters');
+  }
+  if (typeof requestArgs !== 'object') {
+    throw new Error('Invalid arguments: arguments must be an object');
+  }
+  const args = requestArgs as {
     server: string;
     tool: string;
     args?: Record<string, unknown>;
   };
-
-  if (!server || !tool) {
-    throw new Error('Missing required parameters: server and tool must be specified');
+  if (typeof args.server !== 'string') {
+    throw new Error('Invalid arguments: server must be a string');
+  }
+  if (typeof args.tool !== 'string') {
+    throw new Error('Invalid arguments: tool must be a string');
   }
 
+  const { server, tool, args: toolArgs = {} } = args;
+
   // Look up the client for this custom tool subtool
-  const customToolKey = `${toolName}:${server}:${tool}`;
+  const customToolKey = `${customToolName}:${server}:${tool}`;
   const client = customToolMaps.get(customToolKey);
 
   if (!client) {
-    throw new Error(`Unknown subtool: ${server}/${tool} for tool ${toolName}`);
+    throw new Error(`Unknown subtool: ${server}/${tool} for tool ${customToolName}`);
   }
 
   try {
-    console.log(`Forwarding ${toolName} tool call to server ${server}, tool ${tool}`);
+    console.log(`Forwarding ${customToolName} tool call to server ${server}, tool ${tool}`);
 
     // Call the actual tool on the target server
     return await client.client.request(
@@ -205,7 +220,7 @@ export async function handleCustomToolCall(
       CompatibilityCallToolResultSchema
     );
   } catch (error) {
-    console.error(`Error calling ${toolName} subtool ${server}/${tool}:`, error);
+    console.error(`Error calling ${customToolName} subtool ${server}/${tool}:`, error);
     throw error;
   }
 }

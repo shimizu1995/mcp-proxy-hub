@@ -11,6 +11,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { registerListToolsHandler, registerCallToolHandler } from './tool-handlers.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import * as configModule from '../config.js';
 
 // Mock dependencies
 vi.mock('../mappers/client-maps.js', () => {
@@ -74,9 +75,114 @@ describe('Tool Handlers', () => {
         cleanup: vi.fn(),
       },
     ];
+
+    // Mock config
+    vi.spyOn(configModule, 'loadConfig').mockResolvedValue({
+      mcpServers: {
+        client1: {
+          command: 'test-command',
+        },
+        client2: {
+          command: 'test-command-2',
+        },
+      },
+    });
   });
 
   describe('registerListToolsHandler', () => {
+    it('should filter tools based on exposedTools configuration', async () => {
+      // Mock config with exposedTools
+      vi.spyOn(configModule, 'loadConfig').mockResolvedValue({
+        mcpServers: {
+          client1: {
+            command: 'test-command',
+            exposedTools: ['tool1'], // Only expose tool1, not tool2
+          },
+          client2: {
+            command: 'test-command-2',
+          },
+        },
+      });
+
+      registerListToolsHandler(server, connectedClients);
+
+      // Extract the list tools handler function
+      const listToolsHandler = mockRequestHandler.mock.calls[0][1];
+
+      // Mock client responses
+      const clientTools1: Tool[] = [
+        { name: 'tool1', description: 'Test Tool 1', inputSchema: { type: 'object' } },
+        { name: 'tool2', description: 'Test Tool 2', inputSchema: { type: 'object' } }, // Should be filtered out
+      ];
+
+      const clientTools2: Tool[] = [
+        { name: 'tool3', description: 'Test Tool 3', inputSchema: { type: 'object' } },
+      ];
+
+      client1RequestMock.mockResolvedValueOnce({ tools: clientTools1 });
+      client2RequestMock.mockResolvedValueOnce({ tools: clientTools2 });
+
+      // Create a request object
+      const request = { params: {} };
+
+      // Call the handler with the request
+      const result = await listToolsHandler(request);
+
+      // Verify that tool2 was filtered out because it's not in the exposedTools list
+      expect(result).toEqual({
+        tools: [
+          { name: 'tool1', description: '[client1] Test Tool 1', inputSchema: { type: 'object' } },
+          { name: 'tool3', description: '[client2] Test Tool 3', inputSchema: { type: 'object' } },
+        ],
+      });
+    });
+
+    it('should filter tools based on hiddenTools configuration', async () => {
+      // Mock config with hiddenTools
+      vi.spyOn(configModule, 'loadConfig').mockResolvedValue({
+        mcpServers: {
+          client1: {
+            command: 'test-command',
+            hiddenTools: ['tool2'], // Hide tool2
+          },
+          client2: {
+            command: 'test-command-2',
+          },
+        },
+      });
+
+      registerListToolsHandler(server, connectedClients);
+
+      // Extract the list tools handler function
+      const listToolsHandler = mockRequestHandler.mock.calls[0][1];
+
+      // Mock client responses
+      const clientTools1: Tool[] = [
+        { name: 'tool1', description: 'Test Tool 1', inputSchema: { type: 'object' } },
+        { name: 'tool2', description: 'Test Tool 2', inputSchema: { type: 'object' } }, // Should be filtered out
+      ];
+
+      const clientTools2: Tool[] = [
+        { name: 'tool3', description: 'Test Tool 3', inputSchema: { type: 'object' } },
+      ];
+
+      client1RequestMock.mockResolvedValueOnce({ tools: clientTools1 });
+      client2RequestMock.mockResolvedValueOnce({ tools: clientTools2 });
+
+      // Create a request object
+      const request = { params: {} };
+
+      // Call the handler with the request
+      const result = await listToolsHandler(request);
+
+      // Verify that tool2 was hidden
+      expect(result).toEqual({
+        tools: [
+          { name: 'tool1', description: '[client1] Test Tool 1', inputSchema: { type: 'object' } },
+          { name: 'tool3', description: '[client2] Test Tool 3', inputSchema: { type: 'object' } },
+        ],
+      });
+    });
     it('should register handler for tools/list', () => {
       registerListToolsHandler(server, connectedClients);
 
@@ -204,6 +310,77 @@ describe('Tool Handlers', () => {
   });
 
   describe('registerCallToolHandler', () => {
+    it('should reject tool call if tool is not in exposedTools', async () => {
+      // Mock config with exposedTools
+      vi.spyOn(configModule, 'loadConfig').mockResolvedValue({
+        mcpServers: {
+          client1: {
+            command: 'test-command',
+            exposedTools: ['tool2'], // Only expose tool2, not tool1
+          },
+          client2: {
+            command: 'test-command-2',
+          },
+        },
+      });
+
+      registerCallToolHandler(server);
+
+      // Extract the call tool handler function
+      const callToolHandler = mockRequestHandler.mock.calls[0][1];
+
+      // Mock clientMaps.getClientForTool
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(connectedClients[0]);
+
+      // Create a request object for tool1, which is not exposed
+      const request = {
+        params: {
+          name: 'tool1',
+          arguments: {},
+        },
+      };
+
+      // Call the handler with the request and expect it to throw
+      await expect(callToolHandler(request)).rejects.toThrow(
+        'Tool tool1 is not exposed by server client1'
+      );
+    });
+
+    it('should reject tool call if tool is in hiddenTools', async () => {
+      // Mock config with hiddenTools
+      vi.spyOn(configModule, 'loadConfig').mockResolvedValue({
+        mcpServers: {
+          client1: {
+            command: 'test-command',
+            hiddenTools: ['tool1'], // Hide tool1
+          },
+          client2: {
+            command: 'test-command-2',
+          },
+        },
+      });
+
+      registerCallToolHandler(server);
+
+      // Extract the call tool handler function
+      const callToolHandler = mockRequestHandler.mock.calls[0][1];
+
+      // Mock clientMaps.getClientForTool
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(connectedClients[0]);
+
+      // Create a request object for tool1, which is hidden
+      const request = {
+        params: {
+          name: 'tool1',
+          arguments: {},
+        },
+      };
+
+      // Call the handler with the request and expect it to throw
+      await expect(callToolHandler(request)).rejects.toThrow(
+        'Tool tool1 is hidden on server client1'
+      );
+    });
     it('should register handler for tools/call', () => {
       registerCallToolHandler(server);
 
