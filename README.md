@@ -18,9 +18,27 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
 
 ### Tool Aggregation
 
-- Expose tools from all connected servers
+- Expose tools from all connected servers with server name prefixes
+- Apply tool filtering based on configuration (exposedTools/hiddenTools)
+- Support tool name remapping via configuration
 - Route tool calls to appropriate backend servers
-- Maintain tool state and handle responses
+
+### Custom Tool Support
+
+- Define compound tools that combine functionality from multiple servers
+- Execute subtools using server and tool name specifications
+- Provide detailed documentation through tool descriptions
+- Specify execution with a standardized format:
+
+  ```json
+  {
+    "server": "server_name",
+    "tool": "tool_name",
+    "args": {
+      // Tool-specific arguments
+    }
+  }
+  ```
 
 ### Prompt Handling
 
@@ -30,37 +48,53 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
 
 ## Configuration
 
-The server requires a JSON configuration file that specifies the MCP servers to connect to. Copy the example config and modify it for your needs:
+The server requires a JSON configuration file that specifies the MCP servers to connect to. Copy the example config([config.example.json](./config.example.json)) and modify it for your needs:
 
 ```bash
 cp config.example.json config.json
 ```
 
-Example config structure:
+### Configuration Options
 
-```json
-{
-  "mcpServers": {
-    "Example Server 1": {
-      "command": "/path/to/server1/build/index.js"
-    },
-    "Example Server 2": {
-      "command": "npx",
-      "args": ["@example/mcp-server", "--option", "value"]
-    },
-    "Example Server 3": {
-      "type": "sse",
-      "url": "http://example.com/mcp"
-    }
-  }
-}
-```
+#### MCP Server Configuration
 
-The config file must be provided when running the server:
+- **Stdio-type Server**:
+  - `command`: Command to execute (required)
+  - `args`: Command line arguments (optional)
+  - `env`: Environment variables (optional)
+  - `exposedTools`: Array of tools to expose (optional)
+  - `hiddenTools`: Array of tools to hide (optional)
 
-```bash
-MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-server
-```
+- **SSE-type Server**:
+  - `type`: "sse" (required)
+  - `url`: URL of the SSE server (required)
+  - `exposedTools`: Array of tools to expose (optional)
+  - `hiddenTools`: Array of tools to hide (optional)
+
+#### Tool Filtering Configuration
+
+- **exposedTools**:
+  - Only exposes specified tools
+  - Array containing strings (original tool names) or {original, exposed} objects (for renaming)
+
+- **hiddenTools**:
+  - Hides specified tools
+  - Array of tool name strings to hide
+
+#### Custom Tool Configuration
+
+- **tools**:
+  - Object with custom tool names as keys
+  - Each tool has `description` and `subtools`
+  - `subtools` is keyed by server name and contains each server's tool list
+
+## Environment Variables
+
+- `MCP_PROXY_CONFIG_PATH`: Path to the configuration file
+- `MCP_PROXY_LOG_DIRECTORY_PATH`: Path to the log directory
+- `MCP_PROXY_LOG_LEVEL`: Log level ("debug" or "info")
+- `KEEP_SERVER_OPEN`: Whether to keep the server open after client disconnection in SSE mode (set to "1" to enable)
+- `PORT`: Port for the SSE server (default: 3006)
 
 ## Development
 
@@ -112,7 +146,7 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 }
 ```
 
-- `KEEP_SERVER_OPEN` will keep the SSE running even if a client disconnects. Useful when multiple clients connects to the MCP proxy.
+`KEEP_SERVER_OPEN` will keep the SSE running even if a client disconnects. This is useful when multiple clients connect to the MCP proxy.
 
 ### Debugging
 
