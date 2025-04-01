@@ -91,11 +91,18 @@ export function registerListToolsHandler(
       }
     }
 
+    // for (const tool of availableTools) {
+    //   console.debug(
+    //     `Tool: ${tool.name}, Server: ${tool.serverName}`,
+    //     JSON.stringify(tool, null, 2)
+    //   );
+    // }
+
     // Then, add custom tools from config
     try {
       // We've already loaded the config above, so reuse it
       const customTools = createCustomTools(config, connectedClients, availableTools);
-      console.log('Custom tools created:', customTools);
+      // console.debug('Custom tools created:', customTools);
       tools.push(...customTools);
     } catch (error) {
       console.error('Error creating custom tools:', error);

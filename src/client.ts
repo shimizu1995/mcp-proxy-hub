@@ -67,9 +67,10 @@ const createClient = (
 export const createClients = async (
   mcpServers: Record<string, ServerTransportConfig>
 ): Promise<ConnectedClient[]> => {
-  const clients: ConnectedClient[] = [];
-
-  for (const [serverName, config] of Object.entries(mcpServers)) {
+  const connectToServer = async (
+    serverName: string,
+    config: ServerTransportConfig
+  ): Promise<ConnectedClient | null> => {
     console.log(`Connecting to server: ${serverName}`);
 
     const waitFor = 2500;
@@ -80,22 +81,20 @@ export const createClients = async (
     while (retry) {
       const { client, transport } = createClient(serverName, config);
       if (!client || !transport) {
-        break;
+        return null;
       }
 
       try {
         await client.connect(transport);
         console.log(`Connected to server: ${serverName}`);
 
-        clients.push({
+        return {
           client,
           name: serverName,
           cleanup: async () => {
             await transport.close();
           },
-        });
-
-        break;
+        };
       } catch (error) {
         console.error(`Failed to connect to ${serverName}:`, error);
         count++;
@@ -111,7 +110,18 @@ export const createClients = async (
         }
       }
     }
-  }
+
+    return null;
+  };
+
+  // 並列で各サーバーへの接続を実行
+  const connectionPromises = Object.entries(mcpServers).map(([serverName, config]) =>
+    connectToServer(serverName, config)
+  );
+
+  // すべての接続を待機し、nullを除外
+  const results = await Promise.all(connectionPromises);
+  const clients = results.filter((client): client is ConnectedClient => client !== null);
 
   return clients;
 };

@@ -71,11 +71,31 @@ function createCustomTool(
 ): Tool | null {
   try {
     // Create combined description from all subtools
-    let description = toolConfig.description || `Execute ${customToolName} commands`;
+    let description =
+      toolConfig.description ??
+      `Use the following tools for development. Each tool has a server name (listed after '##') and a tool name (listed after '###'). 
+To execute a tool, use the following format:
+{
+  "server": "server_name",
+  "tool": "tool_name",
+  "args": {
+    // Tool-specific arguments go here
+  }
+}
+For example, to use the Edit tool from claude_code, your request would look like:
+{
+  "server": "claude_code",
+  "tool": "Edit",
+  "args": {
+    "file_path": "/path/to/file",
+    "old_string": "text to replace",
+    "new_string": "replacement text"
+  }
+}`;
 
     // Store a map of all subtool tools for reference during tool call
     if (toolConfig.subtools) {
-      description += '\n\n## Available subtools';
+      description += '\n\n# Available subtools';
 
       // Loop through each server in subtools
       Object.entries(toolConfig.subtools).forEach(([serverName, subtool]) => {
@@ -89,27 +109,34 @@ function createCustomTool(
         }
 
         // Add server to description
-        description += `\n### ${serverName} server`;
+        description += `\n## ${serverName}`;
 
         // Add each tool from this server
         subtool.tools.forEach((tool) => {
           const toolName = tool.name;
 
+          description += `\n### ${toolName}`;
+
           const sameTool = allTools.find((t) => t.serverName == serverName && t.name == toolName);
+          description += `\n#### description`;
           description += (() => {
             if (tool.description && tool.description.length > 0) {
-              return `\n- ${tool.name}: ${tool.description}`;
+              return `\n${tool.description}`;
             }
 
             if (sameTool) {
-              return `\n- ${tool.name}: ${sameTool.description}`;
+              return `\n${sameTool.description}`;
             }
-            return `\n- ${tool.name}`;
+            console.warn(
+              `Tool ${toolName} not found in server ${serverName} tools, using default description`
+            );
+            return `\n`;
           })();
 
           if (sameTool) {
             // add inputSchema info
-            description += `\n  - inputSchema: ${JSON.stringify(sameTool.inputSchema)}\n`;
+            description += `\n#### inputSchema`;
+            description += `\n${JSON.stringify(sameTool.inputSchema)}\n`;
           }
 
           // Map the custom tool subtool to its client
@@ -118,6 +145,7 @@ function createCustomTool(
         });
       });
     }
+    // console.debug(`Custom tool ${customToolName} description:\n${description}`);
 
     // Add schema for tool parameters
     const tool: Tool = {
