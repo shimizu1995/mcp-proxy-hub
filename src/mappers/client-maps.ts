@@ -11,8 +11,8 @@ export class ClientMaps {
   /**
    * Gets the client associated with a specific tool
    */
-  getClientForTool(name: string): ConnectedClient | undefined {
-    return this.toolToClientMap.get(name);
+  getClientForTool(toolName: string): ConnectedClient | undefined {
+    return this.toolToClientMap.get(toolName);
   }
 
   /**
@@ -31,8 +31,14 @@ export class ClientMaps {
 
   /**
    * Maps a tool to a client
+   * @param toolName The exposed tool name
+   * @param client The client that handles this tool
+   * @throws Error if the tool is already registered
    */
   mapToolToClient(toolName: string, client: ConnectedClient): void {
+    if (this.toolToClientMap.has(toolName)) {
+      throw new Error(`Tool '${toolName}' is already registered`);
+    }
     this.toolToClientMap.set(toolName, client);
   }
 

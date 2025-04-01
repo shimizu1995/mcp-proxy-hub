@@ -2,7 +2,7 @@
   "mcpServers": {
     "Example Server 1": {
       "command": "/path/to/server1/build/index.js",
-      "exposedTools": ["tool1", "tool2"]
+      "exposedTools": ["tool1", { "original": "tool2", "exposed": "renamed_tool2" }]
     },
     "Example Server 2": {
       "command": "npx",

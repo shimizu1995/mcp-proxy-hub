@@ -8,26 +8,82 @@ import {
 import { ConnectedClient } from '../client.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { loadConfig, ServerTransportConfig } from '../config.js';
+import { loadConfig, ServerTransportConfig, ToolMapping } from '../config.js';
 import { createCustomTools, handleCustomToolCall, ToolWithServerName } from '../custom-tools.js';
 
 /**
+ * Helper function to check if a tool is in the exposedTools list
+ * and get its exposed name if it's remapped
+ *
+ * @param toolName Original tool name to check
+ * @param exposedTools List of exposed tools (strings or mappings)
+ * @returns Object with isExposed flag and exposedName if it's renamed
+ */
+function getExposedToolInfo(
+  toolName: string,
+  exposedTools?: (string | ToolMapping)[]
+): { isExposed: boolean; exposedName?: string } {
+  if (!exposedTools || exposedTools.length === 0) {
+    return { isExposed: false };
+  }
+
+  // Check if tool exists in exposedTools list
+  for (const entry of exposedTools) {
+    // Case 1: Simple string entry
+    if (typeof entry === 'string') {
+      if (entry === toolName) {
+        return { isExposed: true }; // Use original name
+      }
+    }
+    // Case 2: Tool mapping object
+    else if (entry.original === toolName) {
+      return { isExposed: true, exposedName: entry.exposed };
+    }
+  }
+
+  return { isExposed: false };
+}
+
+/**
  * Filters tools based on exposedTools and hiddenTools configuration
+ * and applies name remapping if configured
  *
  * @param tools Array of tools to filter
  * @param serverConfig Configuration for the server
- * @returns Filtered array of tools
+ * @returns Filtered and potentially renamed array of tools
  */
-function filterTools(tools: Tool[], serverConfig?: ServerTransportConfig): Tool[] {
+function filterTools(
+  tools: Tool[],
+  serverConfig?: ServerTransportConfig
+): (Tool & {
+  originalName?: string;
+})[] {
   if (!serverConfig) {
     return tools;
   }
 
   const { exposedTools, hiddenTools } = serverConfig;
 
-  // If exposedTools is defined, only include tools in that list
+  // If exposedTools is defined, filter and potentially rename tools
   if (exposedTools != null) {
-    return tools.filter((tool) => exposedTools.includes(tool.name));
+    return tools
+      .map((tool) => {
+        const { isExposed, exposedName } = getExposedToolInfo(tool.name, exposedTools);
+
+        if (!isExposed) return null; // Tool not exposed
+
+        // If tool has a new name, create a copy with the new name
+        if (exposedName) {
+          return {
+            ...tool,
+            name: exposedName,
+            originalName: tool.name, // Store original name for internal use
+          };
+        }
+
+        return tool; // Keep original tool
+      })
+      .filter((tool): tool is Tool => tool !== null); // Remove null entries
   }
 
   // If hiddenTools is defined, exclude tools in that list
@@ -78,7 +134,17 @@ export function registerListToolsHandler(
           const filteredTools = filterTools(result.tools, serverConfig);
 
           const toolsWithSource = filteredTools.map((tool) => {
+            // Map the tool to client
             clientMaps.mapToolToClient(tool.name, connectedClient);
+
+            // Store the original name mapping in the client if needed
+            if (tool.originalName) {
+              if (!connectedClient.client.toolMappings) {
+                connectedClient.client.toolMappings = {};
+              }
+              connectedClient.client.toolMappings[tool.name] = tool.originalName;
+            }
+
             return {
               ...tool,
               description: `[${connectedClient.name}] ${tool.description || ''}`,
@@ -117,26 +183,40 @@ export function registerListToolsHandler(
  */
 export function registerCallToolHandler(server: Server): void {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name: toolName, arguments: args } = request.params;
     const config = await loadConfig();
 
-    // Check if this is a custom tool
-    const clientForTool = clientMaps.getClientForTool(name);
+    // Get the client for this tool
+    const clientForTool = clientMaps.getClientForTool(toolName);
+
+    // Find the original name mapping from the client if it exists
+    let originalToolName: string | undefined;
+    if (clientForTool?.client.toolMappings) {
+      originalToolName = clientForTool.client.toolMappings[toolName];
+      if (originalToolName) {
+        console.debug(`Tool ${toolName} is remapped to original name ${originalToolName}`);
+      } else {
+        console.debug(`Tool ${toolName} has no remapping`);
+      }
+    } else {
+      console.debug(`Tool ${toolName} has no remapping`);
+    }
 
     if (clientForTool && clientForTool.name === 'custom') {
+      // TODO: nameで判定しないようにする
       try {
-        console.log(`Handling custom tool call: ${name}`);
+        console.log(`Handling custom tool call: ${toolName}`);
         console.log('Arguments:', args);
-        return await handleCustomToolCall(name, args, request.params._meta);
+        return await handleCustomToolCall(toolName, args, request.params._meta);
       } catch (error) {
-        console.error(`Error handling custom tool call for ${name}:`, error);
+        console.error(`Error handling custom tool call for ${toolName}:`, error);
         throw error;
       }
     }
 
     // Standard tool handling for all other tools
     if (!clientForTool) {
-      throw new Error(`Unknown tool: ${name}`);
+      throw new Error(`Unknown tool: ${toolName}`);
     }
 
     // Validate tool access based on exposedTools and hiddenTools
@@ -144,28 +224,33 @@ export function registerCallToolHandler(server: Server): void {
     if (serverConfig) {
       // If exposedTools is defined, check if the tool is in the list
       if (serverConfig.exposedTools && serverConfig.exposedTools.length > 0) {
-        if (!serverConfig.exposedTools.includes(name)) {
-          throw new Error(`Tool ${name} is not exposed by server ${clientForTool.name}`);
+        // First check if name is directly exposed
+        const toolInfo = getExposedToolInfo(
+          originalToolName ?? toolName,
+          serverConfig.exposedTools
+        );
+        if (!toolInfo.isExposed) {
+          throw new Error(`Tool ${toolName} is not exposed by server ${clientForTool.name}`);
         }
       }
 
       // If hiddenTools is defined, check if the tool is not in the list
       if (serverConfig.hiddenTools && serverConfig.hiddenTools.length > 0) {
-        if (serverConfig.hiddenTools.includes(name)) {
-          throw new Error(`Tool ${name} is hidden on server ${clientForTool.name}`);
+        if (serverConfig.hiddenTools.includes(originalToolName ?? toolName)) {
+          throw new Error(`Tool ${toolName} is hidden on server ${clientForTool.name}`);
         }
       }
     }
 
     try {
-      console.log('Forwarding tool call:', name);
+      console.log('Forwarding tool call:', toolName);
 
       // Use the correct schema for tool calls
       return await clientForTool.client.request(
         {
           method: 'tools/call',
           params: {
-            name,
+            name: originalToolName ?? toolName,
             arguments: args || {},
             _meta: {
               progressToken: request.params._meta?.progressToken,

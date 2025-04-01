@@ -6,7 +6,9 @@ import { ServerTransportConfig } from './config.js';
 
 const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
 export interface ConnectedClient {
-  client: Client;
+  client: Client & {
+    toolMappings?: Record<string, string>;
+  };
   cleanup: () => Promise<void>;
   name: string;
 }

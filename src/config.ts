@@ -1,19 +1,28 @@
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
+// Define a type for tool mapping (original name -> exposed name)
+export type ToolMapping = {
+  original: string;
+  exposed: string;
+};
+
+// Union type for exposedTools entries
+export type ExposedTool = string | ToolMapping;
+
 export type TransportConfigStdio = {
   type?: 'stdio';
   command: string;
   args?: string[];
   env?: Record<string, string>;
-  exposedTools?: string[];
+  exposedTools?: ExposedTool[];
   hiddenTools?: string[];
 };
 
 export type TransportConfigSSE = {
   type: 'sse';
   url: string;
-  exposedTools?: string[];
+  exposedTools?: ExposedTool[];
   hiddenTools?: string[];
 };
 
