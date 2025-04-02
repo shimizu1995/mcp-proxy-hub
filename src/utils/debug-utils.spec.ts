@@ -107,6 +107,29 @@ describe('Debug Utilities', () => {
       expect(debugUtils.formatForConsole(mixedString)).toBe(expected);
     });
 
+    it('should handle newlines in nested object properties', () => {
+      const nestedObj = {
+        server: 'claude_code',
+        tool: 'Edit',
+        args: {
+          file_path: '/path/to/file.ts',
+          old_string:
+            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\n\n// Comment\nconst WHITELISTED_COMMANDS = new Set([",
+          new_string:
+            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\nimport path from 'path';\n\n// Comment\nconst WHITELISTED_COMMANDS = new Set([",
+        },
+      };
+
+      const result = debugUtils.formatForConsole(nestedObj);
+
+      // Result should contain actual newlines, not escaped newlines
+      expect(result).not.toContain('\\n');
+
+      // Result should contain the properly formatted strings with newlines
+      expect(result).toContain("import { execa } from 'execa';\n");
+      expect(result).toContain("import path from 'path';\n");
+    });
+
     it('should handle nested JSON strings within objects', () => {
       const objWithNestedJsonStr = {
         id: 1,
@@ -150,6 +173,33 @@ describe('Debug Utilities', () => {
       };
 
       expect(debugUtils.formatForConsole(obj)).toBe(JSON.stringify(obj, null, 2));
+    });
+
+    it('should handle the specific Edit tool case with nested \\n in object properties', () => {
+      // This test simulates the actual case from the issue
+      const input = {
+        server: 'claude_code',
+        tool: 'Edit',
+        args: {
+          file_path: '/Users/yu.shimizu/work/mcp-whitelist-shell/src/shell-command-handler.ts',
+          old_string:
+            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\n\n// ホワイトリストに登録されたコマンドのみ実行を許可する\nconst WHITELISTED_COMMANDS = new Set([",
+          new_string:
+            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\nimport path from 'path';\nimport fs from 'fs';\n\n// Set of allowed directories (subdirectories of these are also allowed)\n// Default to user's home directory if available, otherwise current directory\nconst ALLOWED_DIRECTORIES = [\n  process.env.HOME || process.cwd(),\n];\n\n// Track the current working directory\nlet currentWorkingDirectory = process.cwd();\n\n// ホワイトリストに登録されたコマンドのみ実行を許可する\nconst WHITELISTED_COMMANDS = new Set([",
+        },
+      };
+
+      const result = debugUtils.formatForConsole(input);
+
+      // The result should not contain escaped \n
+      // Verify that there are no escaped newlines in the output
+      expect(result).not.toContain('\\n');
+
+      // Verify that the original multiline strings are properly preserved with real newlines
+      expect(result).toContain("import { execa } from 'execa';\n");
+      expect(result).toContain('// ホワイトリストに登録されたコマンドのみ実行を許可する\n');
+      expect(result).toContain('// Set of allowed directories');
+      expect(result).toContain('let currentWorkingDirectory = process.cwd();\n');
     });
   });
 

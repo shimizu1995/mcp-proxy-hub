@@ -96,20 +96,7 @@ function convertToFormattedJsonString(value: unknown): string {
  * @returns The processed string with correctly displayed escaped characters
  */
 function processEscapedCharacters(str: string): string {
-  // Only process strings that are quoted JSON strings
-  if (str.startsWith('"') && str.endsWith('"')) {
-    const content = str.slice(1, -1);
-
-    // Only process if there are escaped characters to handle
-    if (content.includes('\\n') || content.includes('\\\\')) {
-      // First handle backslashes, then newlines to avoid confusion
-      const processedContent = content.replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
-
-      return '"' + processedContent + '"';
-    }
-  }
-
-  return str;
+  return str.replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
 }
 
 /**
