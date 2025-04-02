@@ -26,7 +26,6 @@ const createClient = (
       console.debug(`cwd is ${process.cwd()}`);
       console.debug(`command:${config.command}`);
       console.debug(`args: `, config.args);
-      console.debug(`env: `, config.env);
 
       const env = {
         ...process.env,

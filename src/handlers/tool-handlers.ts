@@ -10,6 +10,15 @@ import { clientMaps } from '../mappers/client-maps.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { loadConfig, ServerTransportConfig, ToolMapping } from '../config.js';
 import { createCustomTools, handleCustomToolCall, ToolWithServerName } from '../custom-tools.js';
+import {
+  isDebugMode,
+  logCustomToolRequest,
+  logCustomToolResponse,
+  logCustomToolError,
+  logServerToolRequest,
+  logServerToolResponse,
+  logServerToolError,
+} from '../utils/debug-utils.js';
 
 /**
  * Helper function to check if a tool is in the exposedTools list
@@ -157,18 +166,10 @@ export function registerListToolsHandler(
       }
     }
 
-    // for (const tool of availableTools) {
-    //   console.debug(
-    //     `Tool: ${tool.name}, Server: ${tool.serverName}`,
-    //     JSON.stringify(tool, null, 2)
-    //   );
-    // }
-
     // Then, add custom tools from config
     try {
       // We've already loaded the config above, so reuse it
       const customTools = createCustomTools(config, connectedClients, availableTools);
-      // console.debug('Custom tools created:', customTools);
       tools.push(...customTools);
     } catch (error) {
       console.error('Error creating custom tools:', error);
@@ -193,23 +194,30 @@ export function registerCallToolHandler(server: Server): void {
     let originalToolName: string | undefined;
     if (clientForTool?.client.toolMappings) {
       originalToolName = clientForTool.client.toolMappings[toolName];
-      if (originalToolName) {
-        console.debug(`Tool ${toolName} is remapped to original name ${originalToolName}`);
-      } else {
-        console.debug(`Tool ${toolName} has no remapping`);
+
+      if (isDebugMode()) {
+        if (originalToolName) {
+          console.debug(`Tool ${toolName} is remapped to original name ${originalToolName}`);
+        } else {
+          console.debug(`Tool ${toolName} has no remapping`);
+        }
       }
-    } else {
+    } else if (isDebugMode()) {
       console.debug(`Tool ${toolName} has no remapping`);
     }
 
     if (clientForTool && clientForTool.name === 'custom') {
       // TODO: nameで判定しないようにする
       try {
-        console.log(`Handling custom tool call: ${toolName}`);
-        console.log('Arguments:', args);
-        return await handleCustomToolCall(toolName, args, request.params._meta);
+        logCustomToolRequest(toolName, args);
+
+        const result = await handleCustomToolCall(toolName, args, request.params._meta);
+
+        logCustomToolResponse(result);
+
+        return result;
       } catch (error) {
-        console.error(`Error handling custom tool call for ${toolName}:`, error);
+        logCustomToolError(toolName, error);
         throw error;
       }
     }
@@ -243,24 +251,31 @@ export function registerCallToolHandler(server: Server): void {
     }
 
     try {
-      console.log('Forwarding tool call:', toolName);
-
-      // Use the correct schema for tool calls
-      return await clientForTool.client.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: originalToolName ?? toolName,
-            arguments: args || {},
-            _meta: {
-              progressToken: request.params._meta?.progressToken,
-            },
+      // Prepare the request object for better visibility
+      const requestObj = {
+        method: 'tools/call',
+        params: {
+          name: originalToolName ?? toolName,
+          arguments: args || {},
+          _meta: {
+            progressToken: request.params._meta?.progressToken,
           },
         },
+      };
+
+      logServerToolRequest(toolName, clientForTool.name, requestObj);
+
+      // Use the correct schema for tool calls
+      const result = await clientForTool.client.request(
+        requestObj,
         CompatibilityCallToolResultSchema
       );
+
+      logServerToolResponse(toolName, result);
+
+      return result;
     } catch (error) {
-      console.error(`Error calling tool through ${clientForTool.name}:`, error);
+      logServerToolError(toolName, clientForTool.name, error);
       throw error;
     }
   });
