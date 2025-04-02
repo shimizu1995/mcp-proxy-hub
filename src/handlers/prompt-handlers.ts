@@ -85,7 +85,11 @@ export function registerListPromptsHandler(
           allPrompts.push(...promptsWithSource);
         }
       } catch (error) {
-        console.error(`Error fetching prompts from ${connectedClient.name}:`, error);
+        const hasErrorCode = typeof error === 'object' && error !== null && 'code' in error;
+        if (!hasErrorCode || error.code !== -32601) {
+          // ignore -32601 Method not found error
+          console.error(`Error fetching prompts from ${connectedClient.name}:`, error);
+        }
       }
     }
 

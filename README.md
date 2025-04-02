@@ -59,6 +59,7 @@ cp config.example.json config.json
 #### MCP Server Configuration
 
 - **Stdio-type Server**:
+
   - `command`: Command to execute (required)
   - `args`: Command line arguments (optional)
   - `env`: Environment variables (optional)
@@ -74,6 +75,7 @@ cp config.example.json config.json
 #### Tool Filtering Configuration
 
 - **exposedTools**:
+
   - Only exposes specified tools
   - Array containing strings (original tool names) or {original, exposed} objects (for renaming)
 

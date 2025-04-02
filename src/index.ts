@@ -31,12 +31,30 @@ async function main() {
 
   await server.connect(transport);
 
+  async function closeAll() {
+    logger.info('Close all clients');
+    try {
+      await cleanup();
+    } catch {
+      logger.error('Error during cleanup');
+    }
+    try {
+      await server.close();
+    } catch {
+      logger.error('Error during server close');
+    }
+  }
+
   // Cleanup on exit
   process.on('SIGINT', async () => {
-    logger.info('Server shutting down...');
-    logger.close();
-    await cleanup();
-    await server.close();
+    logger.info('SIGINT received, shutting down...');
+    await closeAll();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received, shutting down...');
+    await closeAll();
     process.exit(0);
   });
 }

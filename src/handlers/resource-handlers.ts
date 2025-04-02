@@ -47,7 +47,10 @@ export function registerListResourcesHandler(
           allResources.push(...resourcesWithSource);
         }
       } catch (error) {
-        console.error(`Error fetching resources from ${connectedClient.name}:`, error);
+        const hasErrorCode = typeof error === 'object' && error !== null && 'code' in error;
+        if (!hasErrorCode || error.code !== -32601) {
+          console.error(`Error fetching resources from ${connectedClient.name}:`, error);
+        }
       }
     }
 
@@ -124,7 +127,10 @@ export function registerListResourceTemplatesHandler(
           allTemplates.push(...templatesWithSource);
         }
       } catch (error) {
-        console.error(`Error fetching resource templates from ${connectedClient.name}:`, error);
+        const hasErrorCode = typeof error === 'object' && error !== null && 'code' in error;
+        if (!hasErrorCode || error.code !== -32601) {
+          console.error(`Error fetching resource templates from ${connectedClient.name}:`, error);
+        }
       }
     }
 

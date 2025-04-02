@@ -1,6 +1,7 @@
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { createServer } from './mcp-proxy.js';
+import 'dotenv/config';
 
 const app = express();
 
