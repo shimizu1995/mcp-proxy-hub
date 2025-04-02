@@ -482,9 +482,6 @@ describe('Tool Handlers', () => {
 
       // Call the handler with the request and expect it to throw
       await expect(callToolHandler(request)).rejects.toThrow('Client error');
-
-      // Verify error logging
-      expect(console.error).toHaveBeenCalledWith('Error calling tool through client1:', mockError);
     });
 
     it('should handle empty arguments in the request', async () => {

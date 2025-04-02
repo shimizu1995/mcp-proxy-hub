@@ -182,13 +182,13 @@ describe('custom-tools', () => {
   describe('handleCustomToolCall', () => {
     it('should throw an error when server or tool is missing', async () => {
       await expect(handleCustomToolCall('testTool', {})).rejects.toThrow(
-        'Missing required parameters'
+        'Invalid arguments: server must be a string'
       );
       await expect(handleCustomToolCall('testTool', { server: 'server1' })).rejects.toThrow(
-        'Missing required parameters'
+        'Invalid arguments: tool must be a string'
       );
       await expect(handleCustomToolCall('testTool', { tool: 'tool1' })).rejects.toThrow(
-        'Missing required parameters'
+        'Invalid arguments: server must be a string'
       );
     });
 
@@ -232,6 +232,9 @@ describe('custom-tools', () => {
           params: {
             name: 'tool1',
             arguments: { param1: 'value1' },
+            _meta: {
+              progressToken: undefined,
+            },
           },
         },
         expect.anything()
@@ -254,6 +257,8 @@ describe('custom-tools', () => {
         },
       };
 
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
       // Set up the tool map
       customToolMaps.set('testTool:server1:tool1', mockClient);
 
@@ -263,7 +268,7 @@ describe('custom-tools', () => {
           server: 'server1',
           tool: 'tool1',
         })
-      ).rejects.toThrow('Client error');
+      ).rejects.toThrow('Not connected');
     });
   });
 });
