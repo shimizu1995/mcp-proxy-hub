@@ -1,8 +1,8 @@
 import { createClients } from './client.js';
 import { loadConfig } from './config.js';
 import {
-  registerListToolsHandler,
-  registerCallToolHandler,
+  handleListToolsRequest,
+  handleToolCall,
   registerGetPromptHandler,
   registerListPromptsHandler,
   registerListResourcesHandler,
@@ -10,6 +10,7 @@ import {
   registerReadResourceHandler,
 } from './handlers/index.js';
 import { setupEventSource, createMCPServer, createCleanupFunction } from './core/index.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Creates an MCP proxy server that forwards requests to connected client servers
@@ -28,8 +29,10 @@ export const createServer = async () => {
   const server = createMCPServer();
 
   // Register all handlers
-  registerListToolsHandler(server, connectedClients);
-  registerCallToolHandler(server);
+  server.setRequestHandler(ListToolsRequestSchema, (request) => {
+    return handleListToolsRequest(request, connectedClients);
+  });
+  server.setRequestHandler(CallToolRequestSchema, handleToolCall);
 
   registerGetPromptHandler(server);
   registerListPromptsHandler(server, connectedClients);

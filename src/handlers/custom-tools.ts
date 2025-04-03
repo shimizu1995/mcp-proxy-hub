@@ -1,9 +1,9 @@
 import { CompatibilityCallToolResultSchema, Tool } from '@modelcontextprotocol/sdk/types.js';
-import { ConnectedClient } from './client.js';
 import { z } from 'zod';
-import { Config, ToolConfig } from './config.js';
-import { clientMaps } from './mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { ConnectedClient } from '../client.js';
+import { Config, ToolConfig } from '../config.js';
+import { clientMaps } from '../mappers/client-maps.js';
 
 const customClient: ConnectedClient = {
   client: new Client({

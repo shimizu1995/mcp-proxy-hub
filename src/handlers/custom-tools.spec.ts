@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createCustomTools, handleCustomToolCall, customToolMaps } from './custom-tools.js';
-import { clientMaps } from './mappers/client-maps.js';
-import { ConnectedClient } from './client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { clientMaps } from '../mappers/client-maps.js';
+import { ConnectedClient } from '../client.js';
 
 describe('custom-tools', () => {
   beforeEach(() => {
