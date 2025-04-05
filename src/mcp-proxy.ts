@@ -30,9 +30,15 @@ export const createServer = async () => {
 
   // Register all handlers
   server.setRequestHandler(ListToolsRequestSchema, (request) => {
-    return handleListToolsRequest(request, connectedClients);
+    return handleListToolsRequest(request, connectedClients, config.mcpServers || {}, {
+      mcpServers: config.mcpServers || {},
+      tools: config.tools,
+    });
   });
-  server.setRequestHandler(CallToolRequestSchema, handleToolCall);
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const result = await handleToolCall(request, config.mcpServers);
+    return result as { [key: string]: unknown }; // Cast to expected return type
+  });
 
   registerGetPromptHandler(server);
   registerListPromptsHandler(server, connectedClients);
