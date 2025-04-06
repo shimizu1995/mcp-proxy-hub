@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleToolCall } from './tool-call-handler.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
-import { clientMappingService } from '../services/client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ConnectedClient } from '../client.js';
 
@@ -26,8 +26,8 @@ vi.mock('../services/custom-tool-service.js', () => ({
   },
 }));
 
-vi.mock('../services/client-mapping-service.js', () => ({
-  clientMappingService: {
+vi.mock('../mappers/client-maps.js', () => ({
+  clientMaps: {
     clearToolMap: vi.fn(),
     mapToolToClient: vi.fn(),
     mapCustomToolToClient: vi.fn(),
@@ -68,7 +68,7 @@ describe('Tool Call Handler', () => {
 
   it('should throw error when tool is not found', async () => {
     // Mock getClientForTool to return undefined
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(undefined);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(undefined);
 
     const request = {
       method: 'tools/call' as const,
@@ -85,7 +85,7 @@ describe('Tool Call Handler', () => {
 
   it('should handle custom tool call', async () => {
     // Mock getClientForTool to return the custom client
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockCustomClient);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
 
     // Mock handleCustomToolCall to return a result
     const mockResult = { result: 'custom-success' };
@@ -118,7 +118,7 @@ describe('Tool Call Handler', () => {
 
   it('should handle regular tool call', async () => {
     // Mock getClientForTool to return a client
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
     const mockResult = { result: 'success' };
@@ -162,7 +162,7 @@ describe('Tool Call Handler', () => {
     };
 
     // Mock getClientForTool to return the client
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
     const mockResult = { result: 'success' };
@@ -196,7 +196,7 @@ describe('Tool Call Handler', () => {
 
   it('should handle tool call with undefined arguments', async () => {
     // Mock getClientForTool to return a client
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
     const mockResult = { result: 'success' };
@@ -227,7 +227,7 @@ describe('Tool Call Handler', () => {
 
   it('should pass additional properties in params to executeToolCall', async () => {
     // Mock getClientForTool to return a client
-    vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient);
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({ result: 'success' });

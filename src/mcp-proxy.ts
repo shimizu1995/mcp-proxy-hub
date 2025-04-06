@@ -1,16 +1,21 @@
-import { createClients } from './client.js';
+import { createClients, getConnectedClient } from './client.js';
 import { loadConfig } from './config.js';
 import {
   handleListToolsRequest,
   handleToolCall,
-  registerGetPromptHandler,
-  registerListPromptsHandler,
+  handleGetPromptRequest,
+  handleListPromptsRequest,
   registerListResourcesHandler,
   registerListResourceTemplatesHandler,
   registerReadResourceHandler,
 } from './handlers/index.js';
 import { setupEventSource, createMCPServer, createCleanupFunction } from './core/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Creates an MCP proxy server that forwards requests to connected client servers
@@ -22,33 +27,39 @@ export const createServer = async () => {
 
   // Load configuration and connect to servers
   const config = await loadConfig();
-  const connectedClients = await createClients(config.mcpServers);
-  console.log(`Connected to ${connectedClients.length} servers`);
+  await createClients(config.mcpServers);
 
   // Create the MCP server
   const server = createMCPServer();
 
   // Register all handlers
   server.setRequestHandler(ListToolsRequestSchema, (request) => {
+    const connectedClients = getConnectedClient();
     return handleListToolsRequest(request, connectedClients, config.mcpServers || {}, {
       mcpServers: config.mcpServers || {},
       tools: config.tools,
     });
   });
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const result = await handleToolCall(request, config.mcpServers);
-    return result as { [key: string]: unknown }; // Cast to expected return type
+    return await handleToolCall(request, config.mcpServers);
   });
 
-  registerGetPromptHandler(server);
-  registerListPromptsHandler(server, connectedClients);
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    return handleGetPromptRequest(request);
+  });
 
-  registerListResourcesHandler(server, connectedClients);
+  server.setRequestHandler(ListPromptsRequestSchema, async (request) => {
+    const connectedClients = getConnectedClient();
+    return handleListPromptsRequest(request, connectedClients);
+  });
+
+  registerListResourcesHandler(server);
   registerReadResourceHandler(server);
-  registerListResourceTemplatesHandler(server, connectedClients);
+  registerListResourceTemplatesHandler(server);
 
   // Create cleanup function
-  const cleanup = createCleanupFunction(connectedClients);
+  const cleanup = createCleanupFunction();
 
   return { server, cleanup };
 };

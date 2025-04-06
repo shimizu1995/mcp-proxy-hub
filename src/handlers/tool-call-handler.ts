@@ -1,5 +1,5 @@
 import { ServerConfig } from '../models/config.js';
-import { clientMappingService } from '../services/client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
 
@@ -22,7 +22,7 @@ export async function handleToolCall(
   const { name: toolName, arguments: args } = request.params;
 
   // Get the client for this tool
-  const clientForTool = clientMappingService.getClientForTool(toolName);
+  const clientForTool = clientMaps.getClientForTool(toolName);
 
   if (!clientForTool) {
     throw new Error(`Unknown tool: ${toolName}`);

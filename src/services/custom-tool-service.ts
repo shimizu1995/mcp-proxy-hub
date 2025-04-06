@@ -1,6 +1,6 @@
 import { ConnectedClient } from '../client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { clientMappingService } from './client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { CompatibilityCallToolResultSchema, Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
   logCustomToolRequest,
@@ -88,7 +88,7 @@ export class CustomToolService {
           description += `\n## ${serverName}`;
 
           // Add each tool from this server
-          (subtool as { tools: { name: string; description?: string }[] }).tools.forEach((tool) => {
+          subtool.tools.forEach((tool) => {
             const toolName = tool.name;
 
             description += `\n### ${toolName}`;
@@ -109,7 +109,7 @@ export class CustomToolService {
             // Map the custom tool subtool to its client if client exists
             if (client) {
               const customToolKey = `${customToolName}:${serverName}:${toolName}`;
-              clientMappingService.mapCustomToolToClient(customToolKey, client);
+              clientMaps.mapCustomToolToClient(customToolKey, client);
             }
           });
         });
@@ -143,7 +143,7 @@ export class CustomToolService {
       // Map the custom tool name to the custom client
       // First check if we already have this tool registered to avoid duplicate errors
       try {
-        clientMappingService.mapToolToClient(customToolName, customClient);
+        clientMaps.mapToolToClient(customToolName, customClient);
       } catch (error) {
         console.warn(`Tool ${customToolName} registration error:`, error);
         // Continue anyway as we've updated the mapToolToClient method to handle duplicates
@@ -221,6 +221,7 @@ For example, to use the Edit tool from claude_code, your request would look like
       throw new Error('Invalid arguments: arguments must be an object');
     }
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const args = requestArgs as {
       server: string;
       tool: string;
@@ -233,7 +234,7 @@ For example, to use the Edit tool from claude_code, your request would look like
 
     // Look up the client for this custom tool subtool
     const customToolKey = `${customToolName}:${server}:${tool}`;
-    const client = clientMappingService.getClientForCustomTool(customToolKey);
+    const client = clientMaps.getClientForCustomTool(customToolKey);
 
     if (!client) {
       throw new Error(`Unknown subtool: ${server}/${tool} for tool ${customToolName}`);

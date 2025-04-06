@@ -18,6 +18,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // Mock dependencies
+vi.mock('../client.js', () => ({
+  getConnectedClient: vi.fn(),
+}));
+
 vi.mock('../mappers/client-maps.js', () => {
   const originalModule = vi.importActual('../mappers/client-maps.js');
   return {
@@ -29,6 +33,9 @@ vi.mock('../mappers/client-maps.js', () => {
     },
   };
 });
+
+// Import getConnectedClient after mocking
+import { getConnectedClient } from '../client.js';
 
 describe('Resource Handlers', () => {
   const server: Server = new Server({
@@ -79,11 +86,14 @@ describe('Resource Handlers', () => {
         cleanup: vi.fn(),
       },
     ];
+
+    // Set up getConnectedClient mock to return our test clients
+    vi.mocked(getConnectedClient).mockReturnValue(connectedClients);
   });
 
   describe('registerListResourcesHandler', () => {
     it('should register handler for resources/list', () => {
-      registerListResourcesHandler(server, connectedClients);
+      registerListResourcesHandler(server);
 
       expect(mockRequestHandler).toHaveBeenCalledTimes(1);
       expect(mockRequestHandler).toHaveBeenCalledWith(
@@ -93,7 +103,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should aggregate resources from all connected clients', async () => {
-      registerListResourcesHandler(server, connectedClients);
+      registerListResourcesHandler(server);
 
       // Extract the list resources handler function
       const listResourcesHandler = mockRequestHandler.mock.calls[0][1];
@@ -168,7 +178,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should handle errors from client requests', async () => {
-      registerListResourcesHandler(server, connectedClients);
+      registerListResourcesHandler(server);
 
       // Extract the list resources handler function
       const listResourcesHandler = mockRequestHandler.mock.calls[0][1];
@@ -204,7 +214,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should handle empty resources array from clients', async () => {
-      registerListResourcesHandler(server, connectedClients);
+      registerListResourcesHandler(server);
 
       // Extract the list resources handler function
       const listResourcesHandler = mockRequestHandler.mock.calls[0][1];
@@ -340,7 +350,7 @@ describe('Resource Handlers', () => {
 
   describe('registerListResourceTemplatesHandler', () => {
     it('should register handler for resources/templates/list', () => {
-      registerListResourceTemplatesHandler(server, connectedClients);
+      registerListResourceTemplatesHandler(server);
 
       expect(mockRequestHandler).toHaveBeenCalledTimes(1);
       expect(mockRequestHandler).toHaveBeenCalledWith(
@@ -350,7 +360,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should aggregate resource templates from all connected clients', async () => {
-      registerListResourceTemplatesHandler(server, connectedClients);
+      registerListResourceTemplatesHandler(server);
 
       // Extract the list resource templates handler function
       const listResourceTemplatesHandler = mockRequestHandler.mock.calls[0][1];
@@ -421,7 +431,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should handle templates with no description', async () => {
-      registerListResourceTemplatesHandler(server, connectedClients);
+      registerListResourceTemplatesHandler(server);
 
       // Extract the list resource templates handler function
       const listResourceTemplatesHandler = mockRequestHandler.mock.calls[0][1];
@@ -449,7 +459,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should handle errors from client requests', async () => {
-      registerListResourceTemplatesHandler(server, connectedClients);
+      registerListResourceTemplatesHandler(server);
 
       // Extract the list resource templates handler function
       const listResourceTemplatesHandler = mockRequestHandler.mock.calls[0][1];
@@ -491,7 +501,7 @@ describe('Resource Handlers', () => {
     });
 
     it('should handle empty resourceTemplates array from clients', async () => {
-      registerListResourceTemplatesHandler(server, connectedClients);
+      registerListResourceTemplatesHandler(server);
 
       // Extract the list resource templates handler function
       const listResourceTemplatesHandler = mockRequestHandler.mock.calls[0][1];

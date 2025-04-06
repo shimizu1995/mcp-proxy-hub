@@ -3,7 +3,7 @@
 When modifying or adding programs, please use the dev tool for development.
 
 When a user provides a link to a GitHub issue like the one below, use the get_issue tool provided by github server to retrieve the issue's content and implement the requested feature or fix as described.
-<https://github.com/shimizu1995/my-prompts/issues/5>
+<https://github.com/{organization}/{repository}/issues/{issue_number}>
 
 **When changing or adding files**, please use the sequentialthinking tool to organize your approach. A totalThoughts value of around 2 is sufficient. This tool is not necessary for other tasks like creating pull requests or documentation.
 

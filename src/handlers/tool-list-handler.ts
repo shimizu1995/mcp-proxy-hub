@@ -2,7 +2,7 @@ import { ServerConfig } from '../models/config.js';
 import { ConnectedClient } from '../client.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
-import { clientMappingService } from '../services/client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 /**
@@ -40,11 +40,11 @@ export async function handleListToolsRequest(
     >;
   }
 ): Promise<{ tools: Tool[] }> {
-  const tools: Tool[] = [];
-  const availableTools: (Tool & { serverName: string })[] = [];
+  const exposedTools: Tool[] = [];
+  const allTools: (Tool & { serverName: string })[] = [];
 
   // Clear the existing tool map
-  clientMappingService.clearToolMap();
+  clientMaps.clearToolMap();
 
   // First, collect tools from all connected MCP servers
   for (const connectedClient of connectedClients) {
@@ -53,19 +53,18 @@ export async function handleListToolsRequest(
       const serverConfig = serverConfigs[connectedClient.name];
 
       // Fetch tools from the client
-      const clientTools = await toolService.fetchToolsFromClient(
+      const clientAllTools = await toolService.fetchToolsFromClient(
         connectedClient,
         serverConfig,
         request.params?._meta
       );
 
-      // Add to the tools list
-      tools.push(...clientTools);
+      const filteredTools = toolService.filterTools(clientAllTools, serverConfig);
+      exposedTools.push(...filteredTools);
 
-      // Keep track of all available tools for custom tool creation
-      if (clientTools.length > 0) {
-        availableTools.push(
-          ...clientTools.map((tool) => ({ ...tool, serverName: connectedClient.name }))
+      if (clientAllTools.length > 0) {
+        allTools.push(
+          ...clientAllTools.map((tool) => ({ ...tool, serverName: connectedClient.name }))
         );
       }
     } catch (error) {
@@ -79,12 +78,12 @@ export async function handleListToolsRequest(
     const customTools = customToolService.createCustomTools(
       toolsConfig,
       connectedClients,
-      availableTools
+      allTools
     );
-    tools.push(...customTools);
+    exposedTools.push(...customTools);
   } catch (error) {
     console.error('Error creating custom tools:', error);
   }
 
-  return { tools };
+  return { tools: exposedTools };
 }

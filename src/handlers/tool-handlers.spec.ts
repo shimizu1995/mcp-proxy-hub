@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleListToolsRequest, handleToolCall } from './tool-handlers.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
-import { clientMappingService } from '../services/client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ConnectedClient } from '../client.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
@@ -27,8 +27,8 @@ vi.mock('../services/custom-tool-service.js', () => ({
   },
 }));
 
-vi.mock('../services/client-mapping-service.js', () => ({
-  clientMappingService: {
+vi.mock('../mappers/client-maps.js', () => ({
+  clientMaps: {
     clearToolMap: vi.fn(),
     mapToolToClient: vi.fn(),
     mapCustomToolToClient: vi.fn(),
@@ -77,7 +77,7 @@ describe('Tool Handlers', () => {
   });
 
   describe('handleListToolsRequest', () => {
-    it('should filter tools based on exposedTools configuration', async () => {
+    it('should clear the tool map and request tools from all clients', async () => {
       // Mock the service responses
       const client1Tools: Tool[] = [
         { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
@@ -88,83 +88,8 @@ describe('Tool Handlers', () => {
 
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client1Tools);
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
-      vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
-
-      const testServerConfigs = {
-        client1: {
-          command: 'test-command',
-          exposedTools: ['tool1'], // Only expose tool1
-        },
-        client2: {
-          command: 'test-command-2',
-        },
-      };
-
-      const request = {
-        method: 'tools/list' as const,
-        params: { _meta: { test: 'metadata' } },
-      };
-
-      const result = await handleListToolsRequest(request, connectedClients, testServerConfigs);
-
-      // Verify service calls
-      expect(toolService.fetchToolsFromClient).toHaveBeenCalledTimes(2);
-      expect(toolService.fetchToolsFromClient).toHaveBeenNthCalledWith(
-        1,
-        mockClient1,
-        testServerConfigs.client1,
-        { test: 'metadata' }
-      );
-
-      // Verify result contains tools from both clients
-      expect(result.tools).toHaveLength(2);
-    });
-
-    it('should filter tools based on hiddenTools configuration', async () => {
-      // Mock the service responses
-      const client1Tools: Tool[] = [
-        { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
-      ];
-      const client2Tools: Tool[] = [
-        { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
-      ];
-
-      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client1Tools);
-      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
-      vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
-
-      const testServerConfigs = {
-        client1: {
-          command: 'test-command',
-          hiddenTools: ['tool2'], // Hide tool2
-        },
-        client2: {
-          command: 'test-command-2',
-        },
-      };
-
-      const request = {
-        method: 'tools/list' as const,
-        params: {},
-      };
-
-      const result = await handleListToolsRequest(request, connectedClients, testServerConfigs);
-
-      // Verify result contains tools from both clients
-      expect(result.tools).toHaveLength(2);
-    });
-
-    it('should aggregate tools from all connected clients', async () => {
-      // Mock the service responses
-      const client1Tools: Tool[] = [
-        { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
-      ];
-      const client2Tools: Tool[] = [
-        { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
-      ];
-
-      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client1Tools);
-      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
+      vi.mocked(toolService.filterTools).mockReturnValueOnce(client1Tools);
+      vi.mocked(toolService.filterTools).mockReturnValueOnce(client2Tools);
       vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
 
       const request = {
@@ -175,9 +100,9 @@ describe('Tool Handlers', () => {
       const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
       // Verify map was cleared
-      expect(clientMappingService.clearToolMap).toHaveBeenCalledTimes(1);
+      expect(clientMaps.clearToolMap).toHaveBeenCalledTimes(1);
 
-      // Verify service calls
+      // Verify service calls with correct parameters
       expect(toolService.fetchToolsFromClient).toHaveBeenCalledTimes(2);
       expect(toolService.fetchToolsFromClient).toHaveBeenNthCalledWith(
         1,
@@ -192,35 +117,25 @@ describe('Tool Handlers', () => {
         { test: 'metadata' }
       );
 
-      // Verify result
-      expect(result).toEqual({
-        tools: [...client1Tools, ...client2Tools],
-      });
+      // Verify result includes tools from both clients
+      expect(result.tools).toHaveLength(2);
+      expect(result.tools).toEqual([...client1Tools, ...client2Tools]);
     });
 
-    it('should handle errors from client requests', async () => {
+    it('should continue processing even if one client fails', async () => {
       // Mock console.error
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Mock tools
+      // First client throws error, second succeeds
+      vi.mocked(toolService.fetchToolsFromClient).mockImplementationOnce(() => {
+        throw new Error('Client error');
+      });
+
       const client2Tools: Tool[] = [
         { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
       ];
-
-      // Create a mock implementation that fails for the first client but succeeds for the second
-      let callCount = 0;
-      vi.mocked(toolService.fetchToolsFromClient).mockImplementation(async () => {
-        callCount++;
-        if (callCount === 1) {
-          console.error('Error fetching tools');
-          // Instead of rejecting with an error, we'll return an empty array to simulate a handled error
-          return [];
-        } else {
-          return client2Tools;
-        }
-      });
-
-      // Mock custom tools
+      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
+      vi.mocked(toolService.filterTools).mockReturnValueOnce(client2Tools);
       vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
 
       const request = {
@@ -234,17 +149,27 @@ describe('Tool Handlers', () => {
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       // Verify result only includes tools from successful client
-      expect(result.tools.length).toBe(1);
+      expect(result.tools).toHaveLength(1);
       expect(result.tools[0].name).toBe('tool2');
 
       // Restore console.error
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle empty tools array from clients', async () => {
-      // Mock clients to return empty tools arrays
-      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue([]);
-      vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
+    it('should include custom tools in the result', async () => {
+      // Mock client tools
+      const clientTools: Tool[] = [
+        { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
+      ];
+
+      // Mock custom tools
+      const customTools: Tool[] = [
+        { name: 'customTool', description: 'Custom Tool', inputSchema: { type: 'object' } },
+      ];
+
+      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue(clientTools);
+      vi.mocked(toolService.filterTools).mockReturnValue(clientTools);
+      vi.mocked(customToolService.createCustomTools).mockReturnValueOnce(customTools);
 
       const request = {
         method: 'tools/list' as const,
@@ -253,101 +178,48 @@ describe('Tool Handlers', () => {
 
       const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
-      // Verify result is an empty array
-      expect(result).toEqual({ tools: [] });
+      // Verify result includes both client tools and custom tools
+      expect(result.tools).toHaveLength(3); // 2 client tools + 1 custom tool
+      expect(result.tools).toContainEqual(customTools[0]);
+    });
+
+    it('should handle errors when creating custom tools', async () => {
+      // Mock console.error
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Mock client tools
+      const clientTools: Tool[] = [
+        { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
+      ];
+
+      vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue(clientTools);
+      vi.mocked(toolService.filterTools).mockReturnValue(clientTools);
+      vi.mocked(customToolService.createCustomTools).mockImplementationOnce(() => {
+        throw new Error('Custom tool error');
+      });
+
+      const request = {
+        method: 'tools/list' as const,
+        params: {},
+      };
+
+      const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
+
+      // Verify error was logged
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      // Verify result still includes client tools
+      expect(result.tools).toHaveLength(2); // Only client tools, no custom tools
+
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
     });
   });
 
   describe('handleToolCall', () => {
-    it('should reject tool call if tool is not in exposedTools', async () => {
-      // Mock clientMappingService.getClientForTool
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient1);
-
-      // Mock validateToolAccess to throw an error
-      vi.mocked(toolService.validateToolAccess).mockImplementationOnce(() => {
-        throw new Error('Tool tool1 is not exposed by server client1');
-      });
-
-      const request = {
-        method: 'tools/call' as const,
-        params: {
-          name: 'tool1',
-          arguments: {},
-        },
-      };
-
-      // Call the handler and expect it to throw
-      await expect(handleToolCall(request, serverConfigs)).rejects.toThrow(
-        'Tool tool1 is not exposed by server client1'
-      );
-    });
-
-    it('should reject tool call if tool is in hiddenTools', async () => {
-      // Mock clientMappingService.getClientForTool
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient1);
-
-      // Mock validateToolAccess to throw an error
-      vi.mocked(toolService.validateToolAccess).mockImplementationOnce(() => {
-        throw new Error('Tool tool1 is hidden on server client1');
-      });
-
-      const request = {
-        method: 'tools/call' as const,
-        params: {
-          name: 'tool1',
-          arguments: {},
-        },
-      };
-
-      // Call the handler and expect it to throw
-      await expect(handleToolCall(request, serverConfigs)).rejects.toThrow(
-        'Tool tool1 is hidden on server client1'
-      );
-    });
-
-    it('should forward tool call to the appropriate client', async () => {
-      // Mock clientMappingService.getClientForTool
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient1);
-
-      // Mock executeToolCall to return a result
-      const mockResult = { result: 'success' };
-      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
-
-      const request = {
-        method: 'tools/call' as const,
-        params: {
-          name: 'tool1',
-          arguments: { param1: 'value1' },
-          _meta: { progressToken: 'token123' },
-        },
-      };
-
-      // Call the handler
-      const result = await handleToolCall(request, serverConfigs);
-
-      // Verify validateToolAccess was called
-      expect(toolService.validateToolAccess).toHaveBeenCalledWith(
-        'tool1',
-        undefined,
-        serverConfigs.client1
-      );
-
-      // Verify executeToolCall was called
-      expect(toolService.executeToolCall).toHaveBeenCalledWith(
-        'tool1',
-        { param1: 'value1' },
-        mockClient1,
-        { progressToken: 'token123' },
-        undefined
-      );
-
-      // Verify result
-      expect(result).toBe(mockResult);
-    });
-
     it('should throw an error when the tool is not found', async () => {
-      // Mock clientMappingService.getClientForTool to return undefined
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(undefined);
+      // Mock clientMaps.getClientForTool to return undefined
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(undefined);
 
       const request = {
         method: 'tools/call' as const,
@@ -363,28 +235,55 @@ describe('Tool Handlers', () => {
       );
     });
 
-    it('should handle and propagate errors from the client', async () => {
-      // Mock clientMappingService.getClientForTool
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient1);
+    it('should call the custom tool service for custom tools', async () => {
+      // Create a mock custom client
+      const mockCustomClient: ConnectedClient = {
+        client: new Client({
+          name: 'custom-client',
+          version: '1.0.0',
+        }),
+        name: 'custom',
+        cleanup: async () => {},
+      };
 
-      // Mock executeToolCall to throw an error
-      vi.mocked(toolService.executeToolCall).mockRejectedValueOnce(new Error('Client error'));
+      // Mock clientMaps.getClientForTool to return the custom client
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
+
+      // Mock customToolService.handleCustomToolCall
+      const mockResult = { result: 'custom tool result' };
+      vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce(mockResult);
 
       const request = {
         method: 'tools/call' as const,
         params: {
-          name: 'tool1',
-          arguments: {},
+          name: 'customTool',
+          arguments: { param: 'value' },
+          _meta: { progressToken: 'token123' },
         },
       };
 
-      // Call the handler and expect it to throw
-      await expect(handleToolCall(request, serverConfigs)).rejects.toThrow('Client error');
+      // Call the handler
+      const result = await handleToolCall(request, serverConfigs);
+
+      // Verify customToolService.handleCustomToolCall was called
+      expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
+        'customTool',
+        { param: 'value' },
+        { progressToken: 'token123' }
+      );
+
+      // Verify result
+      expect(result).toBe(mockResult);
     });
 
-    it('should handle empty arguments in the request', async () => {
-      // Mock clientMappingService.getClientForTool
-      vi.mocked(clientMappingService.getClientForTool).mockReturnValueOnce(mockClient1);
+    it('should call executeToolCall with the correct parameters', async () => {
+      // Mock clientMaps.getClientForTool
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient1);
+
+      // Set up a mock mapping for the tool
+      mockClient1.client.toolMappings = {
+        'exposed-tool': 'original-tool',
+      };
 
       // Mock executeToolCall to return a result
       const mockResult = { result: 'success' };
@@ -393,22 +292,33 @@ describe('Tool Handlers', () => {
       const request = {
         method: 'tools/call' as const,
         params: {
-          name: 'tool1',
-          // arguments intentionally omitted
+          name: 'exposed-tool',
+          arguments: { param1: 'value1' },
+          _meta: { progressToken: 'token123' },
         },
       };
 
       // Call the handler
-      await handleToolCall(request, serverConfigs);
+      const result = await handleToolCall(request, serverConfigs);
 
-      // Verify executeToolCall was called with empty arguments
-      expect(toolService.executeToolCall).toHaveBeenCalledWith(
-        'tool1',
-        {}, // Empty object instead of undefined
-        mockClient1,
-        undefined,
-        undefined
+      // Verify validateToolAccess was called
+      expect(toolService.validateToolAccess).toHaveBeenCalledWith(
+        'exposed-tool',
+        'original-tool',
+        serverConfigs.client1
       );
+
+      // Verify executeToolCall was called with original tool name
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'exposed-tool',
+        { param1: 'value1' },
+        mockClient1,
+        { progressToken: 'token123' },
+        'original-tool'
+      );
+
+      // Verify result
+      expect(result).toBe(mockResult);
     });
   });
 });

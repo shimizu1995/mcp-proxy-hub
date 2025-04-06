@@ -1,5 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ConnectedClient } from '../client.js';
+import { getConnectedClient } from '../client.js';
 import * as eventsource from 'eventsource';
 
 /**
@@ -34,8 +34,9 @@ export function createMCPServer(): Server {
  * @param connectedClients The list of connected clients
  * @returns Cleanup function
  */
-export function createCleanupFunction(connectedClients: ConnectedClient[]): () => Promise<void> {
+export function createCleanupFunction(): () => Promise<void> {
   return async () => {
+    const connectedClients = getConnectedClient();
     await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
   };
 }

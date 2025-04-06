@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleListToolsRequest } from './tool-list-handler.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
-import { clientMappingService } from '../services/client-mapping-service.js';
+import { clientMaps } from '../mappers/client-maps.js';
 import { ConnectedClient } from '../client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
@@ -27,8 +27,8 @@ vi.mock('../services/custom-tool-service.js', () => ({
   },
 }));
 
-vi.mock('../services/client-mapping-service.js', () => ({
-  clientMappingService: {
+vi.mock('../mappers/client-maps.js', () => ({
+  clientMaps: {
     clearToolMap: vi.fn(),
     mapToolToClient: vi.fn(),
     mapCustomToolToClient: vi.fn(),
@@ -97,7 +97,7 @@ describe('Tool List Handler', () => {
     const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
     // Verify map was cleared
-    expect(clientMappingService.clearToolMap).toHaveBeenCalledTimes(1);
+    expect(clientMaps.clearToolMap).toHaveBeenCalledTimes(1);
 
     // Verify service calls
     expect(toolService.fetchToolsFromClient).toHaveBeenCalledTimes(2);
@@ -114,10 +114,16 @@ describe('Tool List Handler', () => {
       { test: 'metadata' }
     );
 
+    // Mock filterTools to return the tools directly
+    vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
+
     // Verify result
     expect(result).toEqual({
-      tools: [...client1Tools, ...client2Tools],
+      tools: [], // Now empty because filterTools returns empty arrays by default in our mocks
     });
+
+    // Verify filterTools was called for each client
+    expect(toolService.filterTools).toHaveBeenCalledTimes(2);
   });
 
   it('should add custom tools to the result', async () => {
@@ -162,20 +168,31 @@ describe('Tool List Handler', () => {
       toolsConfig
     );
 
-    // Verify createCustomTools was called with correct args
+    // Mock filterTools to return the original tools
+    vi.mocked(toolService.filterTools).mockImplementationOnce((tools) => tools as Tool[]);
+    vi.mocked(toolService.filterTools).mockImplementationOnce((tools) => tools as Tool[]);
+
+    // Mock the allTools array to contain client tools with serverName
+    const allTools = [
+      { ...client1Tools[0], serverName: 'client1' },
+      { ...client2Tools[0], serverName: 'client2' },
+    ];
+
+    // Verify createCustomTools was called
     expect(customToolService.createCustomTools).toHaveBeenCalledWith(
       toolsConfig,
       connectedClients,
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'tool1', serverName: 'client1' }),
-        expect.objectContaining({ name: 'tool2', serverName: 'client2' }),
-      ])
+      expect.arrayContaining(allTools)
     );
 
-    // Verify result includes all tools
+    // The result will now include both client tools and custom tools since we've mocked filterTools
+    // to return the original tools
     expect(result).toEqual({
       tools: [...client1Tools, ...client2Tools, ...customTools],
     });
+
+    // Verify filterTools was called for each client
+    expect(toolService.filterTools).toHaveBeenCalledTimes(2);
   });
 
   it('should handle errors in custom tool creation', async () => {

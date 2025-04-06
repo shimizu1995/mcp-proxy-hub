@@ -1,209 +1,448 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ToolService } from './tool-service.js';
-import { ServerConfig } from '../models/config.js';
+import { ConnectedClient } from '../client.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
-// Mock the clientMappingService
-vi.mock('./client-mapping-service.js', () => ({
-  clientMappingService: {
-    mapToolToClient: vi.fn(),
-    getClientForTool: vi.fn(),
-    clearToolMap: vi.fn(),
-  },
-}));
-
-// Mock console.error to avoid noise in tests
-vi.spyOn(console, 'error').mockImplementation(() => {});
+interface ToolsResponse {
+  tools: Tool[] | unknown;
+}
 
 describe('ToolService', () => {
   let toolService: ToolService;
+  let mockClient: ConnectedClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
+
     toolService = new ToolService();
+
+    mockClient = {
+      client: new Client({
+        name: 'test-client',
+        version: '1.0.0',
+      }),
+      name: 'testClient',
+      cleanup: async () => {},
+    };
+
+    // Mock client request method
+    mockClient.client.request = vi.fn();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  describe('fetchToolsFromClient', () => {
+    it('should successfully fetch tools from a client', async () => {
+      const toolsResponse: ToolsResponse = {
+        tools: [
+          { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
+          { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
+        ],
+      };
+
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      const result = await toolService.fetchToolsFromClient(mockClient);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/list',
+          params: {
+            _meta: undefined,
+          },
+        },
+        expect.any(Object)
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].description).toBe('[testClient] Tool 1');
+      expect(result[1].description).toBe('[testClient] Tool 2');
+    });
+
+    it('should return empty array when tools response is not an array', async () => {
+      const toolsResponse: ToolsResponse = {
+        tools: 'not an array',
+      };
+
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      const result = await toolService.fetchToolsFromClient(mockClient);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when tools array is empty', async () => {
+      const toolsResponse: ToolsResponse = {
+        tools: [],
+      };
+
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      const result = await toolService.fetchToolsFromClient(mockClient);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle errors and return empty array', async () => {
+      // Mock console.error to avoid polluting test output
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.mocked(mockClient.client.request).mockRejectedValueOnce(new Error('Test error'));
+
+      const result = await toolService.fetchToolsFromClient(mockClient);
+
+      expect(result).toEqual([]);
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should pass meta data to the client request', async () => {
+      const toolsResponse: ToolsResponse = {
+        tools: [],
+      };
+
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      const meta = { test: 'metadata' };
+      await toolService.fetchToolsFromClient(mockClient, undefined, meta);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/list',
+          params: {
+            _meta: meta,
+          },
+        },
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('executeToolCall', () => {
+    it('should execute a tool call successfully', async () => {
+      const mockResult = { result: 'success' };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(mockResult);
+
+      const result = await toolService.executeToolCall('tool1', { param1: 'value1' }, mockClient);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'tool1',
+            arguments: { param1: 'value1' },
+            _meta: undefined,
+          },
+        },
+        expect.any(Object)
+      );
+
+      expect(result).toBe(mockResult);
+    });
+
+    it('should use original tool name when provided', async () => {
+      const mockResult = { result: 'success' };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(mockResult);
+
+      await toolService.executeToolCall(
+        'exposedName',
+        { param1: 'value1' },
+        mockClient,
+        undefined,
+        'originalName'
+      );
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'originalName',
+            arguments: { param1: 'value1' },
+            _meta: undefined,
+          },
+        },
+        expect.any(Object)
+      );
+    });
+
+    it('should pass meta data to client request', async () => {
+      const mockResult = { result: 'success' };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(mockResult);
+
+      const meta = { progressToken: 'token123' };
+      await toolService.executeToolCall('tool1', { param1: 'value1' }, mockClient, meta);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'tool1',
+            arguments: { param1: 'value1' },
+            _meta: meta,
+          },
+        },
+        expect.any(Object)
+      );
+    });
+
+    it('should propagate errors from client', async () => {
+      vi.mocked(mockClient.client.request).mockRejectedValueOnce(new Error('Client error'));
+
+      await expect(toolService.executeToolCall('tool1', {}, mockClient)).rejects.toThrow(
+        'Client error'
+      );
+    });
+  });
+
+  describe('validateToolAccess', () => {
+    it('should do nothing when server config is undefined', () => {
+      expect(() => {
+        toolService.validateToolAccess(
+          'tool1',
+          undefined,
+          undefined as unknown as Record<string, unknown>
+        );
+      }).not.toThrow();
+    });
+
+    it('should throw error when tool is not in exposedTools', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: ['tool2', 'tool3'],
+      };
+
+      expect(() => {
+        toolService.validateToolAccess('tool1', undefined, serverConfig);
+      }).toThrow('Tool tool1 is not exposed by server');
+    });
+
+    it('should throw error when tool is in hiddenTools', () => {
+      const serverConfig = {
+        command: 'test',
+        hiddenTools: ['tool1'],
+      };
+
+      expect(() => {
+        toolService.validateToolAccess('tool1', undefined, serverConfig);
+      }).toThrow('Tool tool1 is hidden');
+    });
+
+    it('should check original tool name when provided', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: ['originalName'],
+      };
+
+      expect(() => {
+        toolService.validateToolAccess('exposedName', 'originalName', serverConfig);
+      }).not.toThrow();
+
+      const serverConfig2 = {
+        command: 'test',
+        exposedTools: ['otherTool'],
+      };
+
+      expect(() => {
+        toolService.validateToolAccess('exposedName', 'originalName', serverConfig2);
+      }).toThrow('Tool exposedName is not exposed by server');
+    });
+
+    it('should handle exposedTools with object format', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [{ original: 'tool1', exposed: 'renamedTool1' }, 'tool2'],
+      };
+
+      expect(() => {
+        toolService.validateToolAccess('renamedTool1', 'tool1', serverConfig);
+      }).not.toThrow();
+
+      expect(() => {
+        toolService.validateToolAccess('tool3', undefined, serverConfig);
+      }).toThrow('Tool tool3 is not exposed by server');
+    });
   });
 
   describe('filterTools', () => {
-    const tools: Tool[] = [
+    const testTools: Tool[] = [
       { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
       { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
       { name: 'tool3', description: 'Tool 3', inputSchema: { type: 'object' } },
     ];
 
-    it('should return empty array if tools is falsy', () => {
-      const result = toolService.filterTools(null, {});
-      expect(result).toEqual([]);
+    it('should return empty array when tools is null or undefined', () => {
+      expect(toolService.filterTools(null)).toEqual([]);
+      expect(toolService.filterTools(undefined)).toEqual([]);
     });
 
-    it('should return all tools when serverConfig is empty', () => {
-      const result = toolService.filterTools(tools, {});
-      expect(result).toEqual(tools);
+    it('should return all tools when server config is undefined', () => {
+      expect(toolService.filterTools(testTools)).toEqual(testTools);
     });
 
     it('should filter tools based on exposedTools', () => {
-      const serverConfig: ServerConfig = { exposedTools: ['tool1', 'tool3'] };
-      const result = toolService.filterTools(tools, serverConfig);
+      const serverConfig = {
+        command: 'test',
+        exposedTools: ['tool1', 'tool3'],
+      };
+
+      const result = toolService.filterTools(testTools, serverConfig);
+
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('tool1');
       expect(result[1].name).toBe('tool3');
-    });
-
-    it('should filter tools based on exposedTools with object config', () => {
-      const serverConfig: ServerConfig = {
-        exposedTools: ['tool1', { original: 'tool2', exposed: 'renamedTool2' }],
-      };
-      const result = toolService.filterTools(tools, serverConfig);
-      expect(result).toHaveLength(2);
-      expect(result[0].name).toBe('tool1');
-      expect(result[1].name).toBe('tool2');
     });
 
     it('should filter tools based on hiddenTools', () => {
-      const serverConfig: ServerConfig = { hiddenTools: ['tool2'] };
-      const result = toolService.filterTools(tools, serverConfig);
+      const serverConfig = {
+        command: 'test',
+        hiddenTools: ['tool2'],
+      };
+
+      const result = toolService.filterTools(testTools, serverConfig);
+
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('tool1');
       expect(result[1].name).toBe('tool3');
     });
 
-    it('should prioritize exposedTools over hiddenTools', () => {
-      const serverConfig: ServerConfig = {
-        exposedTools: ['tool1', 'tool2'],
-        hiddenTools: ['tool2', 'tool3'],
+    it('should handle exposedTools with object format', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [{ original: 'tool1', exposed: 'renamedTool1' }, 'tool3'],
       };
-      const result = toolService.filterTools(tools, serverConfig);
+
+      const result = toolService.filterTools(testTools, serverConfig);
+
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('tool1');
-      expect(result[1].name).toBe('tool2');
+      expect(result[1].name).toBe('tool3');
     });
   });
 
   describe('processToolName', () => {
-    it('should return the original name if serverConfig.exposedTools is undefined', () => {
-      const result = toolService.processToolName('tool1', {});
+    it('should return original name when exposedTools is undefined', () => {
+      const serverConfig = {
+        command: 'test',
+      };
+
+      const result = toolService.processToolName('tool1', serverConfig);
+
       expect(result).toBe('tool1');
     });
 
-    it('should return the original name if tool is not configured for renaming', () => {
-      const serverConfig: ServerConfig = {
+    it('should return original name when tool is not configured for renaming', () => {
+      const serverConfig = {
+        command: 'test',
         exposedTools: ['tool1', 'tool2'],
       };
+
       const result = toolService.processToolName('tool1', serverConfig);
+
       expect(result).toBe('tool1');
     });
 
-    it('should return the exposed name if tool is configured for renaming', () => {
-      const serverConfig: ServerConfig = {
-        exposedTools: ['tool1', { original: 'tool2', exposed: 'renamedTool2' }],
+    it('should return exposed name when tool is configured for renaming', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [{ original: 'tool1', exposed: 'renamedTool1' }, 'tool2'],
       };
-      const result = toolService.processToolName('tool2', serverConfig);
-      expect(result).toBe('renamedTool2');
-    });
 
-    it('should handle multiple tools configured for renaming', () => {
-      const serverConfig: ServerConfig = {
-        exposedTools: [
-          { original: 'tool1', exposed: 'renamedTool1' },
-          { original: 'tool2', exposed: 'renamedTool2' },
-        ],
-      };
-      const result1 = toolService.processToolName('tool1', serverConfig);
-      const result2 = toolService.processToolName('tool2', serverConfig);
-      expect(result1).toBe('renamedTool1');
-      expect(result2).toBe('renamedTool2');
+      const result = toolService.processToolName('tool1', serverConfig);
+
+      expect(result).toBe('renamedTool1');
     });
   });
 
   describe('prefixToolDescription', () => {
-    it('should prefix the tool description with client name', () => {
+    it('should add client name prefix to tool description', () => {
       const tool: Tool = {
         name: 'tool1',
-        description: 'Tool 1 description',
+        description: 'Tool description',
         inputSchema: { type: 'object' },
       };
-      const result = toolService.prefixToolDescription(tool, 'client1');
-      expect(result.description).toBe('[client1] Tool 1 description');
-    });
 
-    it('should preserve all other tool properties', () => {
-      const tool: Tool = {
-        name: 'tool1',
-        description: 'Tool 1 description',
-        inputSchema: { type: 'object' },
-        originalName: 'originalTool1',
-      };
-      const result = toolService.prefixToolDescription(tool, 'client1');
-      expect(result).toEqual({
-        name: 'tool1',
-        description: '[client1] Tool 1 description',
-        inputSchema: { type: 'object' },
-        originalName: 'originalTool1',
-      });
+      const result = toolService.prefixToolDescription(tool, 'testClient');
+
+      expect(result.description).toBe('[testClient] Tool description');
+      expect(result.name).toBe('tool1'); // Name should remain unchanged
+      expect(result.inputSchema).toBe(tool.inputSchema); // Schema should remain unchanged
     });
   });
 
   describe('isToolAllowed', () => {
-    it('should return true if no server config exists', () => {
-      const result = toolService.isToolAllowed('tool1', 'client1', {});
+    it('should return true when server config is undefined', () => {
+      const serverConfigs = {};
+
+      const result = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+
       expect(result).toBe(true);
     });
 
-    it('should return true if server config exists but has no tool filters', () => {
+    it('should return true when tool is in exposedTools', () => {
       const serverConfigs = {
-        client1: {},
+        testClient: {
+          command: 'test',
+          exposedTools: ['tool1', 'tool2'],
+        },
       };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
+
+      const result = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+
       expect(result).toBe(true);
     });
 
-    it('should return false if tool is not in exposedTools', () => {
+    it('should return false when tool is not in exposedTools', () => {
       const serverConfigs = {
-        client1: { exposedTools: ['tool2', 'tool3'] },
+        testClient: {
+          command: 'test',
+          exposedTools: ['tool2', 'tool3'],
+        },
       };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
+
+      const result = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+
       expect(result).toBe(false);
     });
 
-    it('should return true if tool is in exposedTools', () => {
+    it('should return false when tool is in hiddenTools', () => {
       const serverConfigs = {
-        client1: { exposedTools: ['tool1', 'tool2'] },
+        testClient: {
+          command: 'test',
+          hiddenTools: ['tool1'],
+        },
       };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
+
+      const result = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return true when tool is not in hiddenTools', () => {
+      const serverConfigs = {
+        testClient: {
+          command: 'test',
+          hiddenTools: ['tool2', 'tool3'],
+        },
+      };
+
+      const result = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+
       expect(result).toBe(true);
     });
 
-    it('should check original tool name in exposedTools object configs', () => {
+    it('should handle exposedTools with object format', () => {
       const serverConfigs = {
-        client1: {
+        testClient: {
+          command: 'test',
           exposedTools: [{ original: 'tool1', exposed: 'renamedTool1' }, 'tool2'],
         },
       };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
-      expect(result).toBe(true);
-    });
 
-    it('should return false if tool is in hiddenTools', () => {
-      const serverConfigs = {
-        client1: { hiddenTools: ['tool1', 'tool3'] },
-      };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
-      expect(result).toBe(false);
-    });
+      const resultOriginal = toolService.isToolAllowed('tool1', 'testClient', serverConfigs);
+      expect(resultOriginal).toBe(true);
 
-    it('should prioritize exposedTools over hiddenTools', () => {
-      const serverConfigs = {
-        client1: {
-          exposedTools: ['tool1', 'tool2'],
-          hiddenTools: ['tool1', 'tool3'],
-        },
-      };
-      const result = toolService.isToolAllowed('tool1', 'client1', serverConfigs);
-      // The tool is exposed, so it should be allowed despite being in hiddenTools
-      expect(result).toBe(true);
+      const resultUnknown = toolService.isToolAllowed('tool3', 'testClient', serverConfigs);
+      expect(resultUnknown).toBe(false);
     });
   });
 });

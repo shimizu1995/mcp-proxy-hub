@@ -7,7 +7,7 @@ import {
   ListResourceTemplatesResultSchema,
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ConnectedClient } from '../client.js';
+import { getConnectedClient } from '../client.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { z } from 'zod';
@@ -15,11 +15,9 @@ import { z } from 'zod';
 /**
  * Registers list resources handler on the server
  */
-export function registerListResourcesHandler(
-  server: Server,
-  connectedClients: ConnectedClient[]
-): void {
+export function registerListResourcesHandler(server: Server): void {
   server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
+    const connectedClients = getConnectedClient();
     const allResources: z.infer<typeof ListResourcesResultSchema>['resources'] = [];
     clientMaps.clearResourceMap();
 
@@ -94,11 +92,9 @@ export function registerReadResourceHandler(server: Server): void {
 /**
  * Registers list resource templates handler on the server
  */
-export function registerListResourceTemplatesHandler(
-  server: Server,
-  connectedClients: ConnectedClient[]
-): void {
+export function registerListResourceTemplatesHandler(server: Server): void {
   server.setRequestHandler(ListResourceTemplatesRequestSchema, async (request) => {
+    const connectedClients = getConnectedClient();
     const allTemplates: ResourceTemplate[] = [];
 
     for (const connectedClient of connectedClients) {

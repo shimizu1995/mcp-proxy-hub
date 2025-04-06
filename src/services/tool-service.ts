@@ -1,7 +1,10 @@
 import { ServerConfig } from '../models/config.js';
 import { ConnectedClient } from '../client.js';
-import { clientMappingService } from './client-mapping-service.js';
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CompatibilityCallToolResultSchema,
+  ListToolsResultSchema,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 
 export class ToolService {
   /**
@@ -14,32 +17,23 @@ export class ToolService {
   ): Promise<Tool[]> {
     try {
       // Request tools from the client
-      // @ts-expect-error - SDK request typing issues
-      const response = await connectedClient.client.request({
-        method: 'tools/list',
-        params: {
-          _meta: meta,
+      const response = await connectedClient.client.request(
+        {
+          method: 'tools/list',
+          params: {
+            _meta: meta,
+          },
         },
-      });
+        ListToolsResultSchema
+      );
 
       // Check if tools were returned and ensure it's an array
-      // @ts-expect-error - SDK response typing issues
       const toolsResponse = Array.isArray(response.tools) ? response.tools : [];
       if (toolsResponse.length === 0) {
         return [];
       }
 
-      // Filter and process tools
-      const filteredTools = this.filterTools(toolsResponse, serverConfig);
-
-      // Process each tool
-      const processedTools = filteredTools.map((tool) => {
-        // Get the original or exposed name
-        const exposedName = tool.originalName ? tool.name : tool.name;
-
-        // Map the tool to the client for routing
-        clientMappingService.mapToolToClient(exposedName, connectedClient);
-
+      const processedTools = toolsResponse.map((tool) => {
         // Add server name prefix to description
         return this.prefixToolDescription(tool, connectedClient.name);
       });
@@ -66,15 +60,17 @@ export class ToolService {
       const callName = originalToolName || toolName;
 
       // Call the tool
-      // @ts-expect-error - SDK request typing issues
-      return await client.client.request({
-        method: 'tools/call',
-        params: {
-          name: callName,
-          arguments: args,
-          _meta: meta,
+      return await client.client.request(
+        {
+          method: 'tools/call',
+          params: {
+            name: callName,
+            arguments: args,
+            _meta: meta,
+          },
         },
-      });
+        CompatibilityCallToolResultSchema
+      );
     } catch (error) {
       console.error(`Error calling tool ${toolName} on ${client.name}:`, error);
       throw error;

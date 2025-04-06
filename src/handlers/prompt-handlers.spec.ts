@@ -1,370 +1,450 @@
-import {
-  GetPromptRequestSchema,
-  ListPromptsRequestSchema,
-  ListPromptsResultSchema,
-  GetPromptResultSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { ConnectedClient } from '../client.js';
-import { clientMaps } from '../mappers/client-maps.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { registerGetPromptHandler, registerListPromptsHandler } from './prompt-handlers.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ConnectedClient, restartClient } from '../client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { loadConfig } from '../config.js';
+import { clientMaps } from '../mappers/client-maps.js';
+import {
+  handleGetPromptRequest,
+  handleListPromptsRequest,
+  handleRestartServerPrompt,
+} from './prompt-handlers.js';
 
 // Mock dependencies
-vi.mock('../mappers/client-maps.js', () => {
-  const originalModule = vi.importActual('../mappers/client-maps.js');
-  return {
-    ...originalModule,
-    clientMaps: {
-      clearPromptMap: vi.fn(),
-      mapPromptToClient: vi.fn(),
-      getClientForPrompt: vi.fn(),
-    },
-  };
-});
+vi.mock('../client.js', () => ({
+  restartClient: vi.fn(),
+}));
+
+vi.mock('../mappers/client-maps.js', () => ({
+  clientMaps: {
+    getClientForPrompt: vi.fn(),
+    clearPromptMap: vi.fn(),
+    mapPromptToClient: vi.fn(),
+    registerPrompt: vi.fn(),
+  },
+}));
+
+vi.mock('../config.js', () => ({
+  loadConfig: vi.fn(),
+}));
 
 describe('Prompt Handlers', () => {
-  const server: Server = new Server({
-    name: 'test-server',
-    version: '1.0.0',
-  });
-  let mockRequestHandler = vi.fn();
+  let mockClient1: ConnectedClient;
+  let mockClient2: ConnectedClient;
   let connectedClients: ConnectedClient[];
-
-  const mockClient1 = new Client({
-    name: 'mock-client-1',
-    version: '1.0.0',
-  });
-  let client1RequestMock = vi.fn();
-  mockClient1.request = client1RequestMock;
-
-  const mockClient2 = new Client({
-    name: 'mock-client-2',
-    version: '1.0.0',
-  });
-  let client2RequestMock = vi.fn();
-  mockClient2.request = client2RequestMock;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock Server
-    mockRequestHandler = vi.fn();
-    server.setRequestHandler = mockRequestHandler;
+    // Setup mock clients
+    const mockClientObj1 = {
+      request: vi.fn(),
+    } as unknown as Client;
 
-    // Mock Clients
-    client1RequestMock = vi.fn();
-    mockClient1.request = client1RequestMock;
+    mockClient1 = {
+      client: mockClientObj1,
+      name: 'client1',
+      cleanup: async () => {},
+    };
 
-    client2RequestMock = vi.fn();
-    mockClient2.request = client2RequestMock;
+    const mockClientObj2 = {
+      request: vi.fn(),
+    } as unknown as Client;
 
-    connectedClients = [
-      {
-        client: mockClient1,
-        name: 'client1',
-        cleanup: vi.fn(),
-      },
-      {
-        client: mockClient2,
-        name: 'client2',
-        cleanup: vi.fn(),
-      },
-    ];
+    mockClient2 = {
+      client: mockClientObj2,
+      name: 'client2',
+      cleanup: async () => {},
+    };
+
+    connectedClients = [mockClient1, mockClient2];
   });
 
-  describe('registerListPromptsHandler', () => {
-    it('should register handler for prompts/list', () => {
-      registerListPromptsHandler(server, connectedClients);
+  describe('handleGetPromptRequest', () => {
+    it('should handle regular prompt requests', async () => {
+      // Mock getClientForPrompt to return a client
+      vi.mocked(clientMaps.getClientForPrompt).mockReturnValueOnce(mockClient1);
 
-      expect(mockRequestHandler).toHaveBeenCalledTimes(1);
-      expect(mockRequestHandler).toHaveBeenCalledWith(
-        ListPromptsRequestSchema,
-        expect.any(Function)
-      );
-    });
-
-    it('should aggregate prompts from all connected clients', async () => {
-      registerListPromptsHandler(server, connectedClients);
-
-      // Extract the list prompts handler function
-      const listPromptsHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock client responses
-      const clientPrompts1 = [
-        { name: 'prompt1', description: 'Test Prompt 1', inputSchema: { type: 'object' } },
-        { name: 'prompt2', description: 'Test Prompt 2', inputSchema: { type: 'object' } },
-      ];
-
-      const clientPrompts2 = [
-        { name: 'prompt3', description: 'Test Prompt 3', inputSchema: { type: 'object' } },
-      ];
-
-      client1RequestMock.mockResolvedValueOnce({ prompts: clientPrompts1 });
-      client2RequestMock.mockResolvedValueOnce({ prompts: clientPrompts2 });
-
-      // Create a request object
-      const request = { params: { _meta: { test: 'metadata' } } };
-
-      // Call the handler with the request
-      const result = await listPromptsHandler(request);
-
-      // Verify clientMaps calls
-      expect(clientMaps.clearPromptMap).toHaveBeenCalledTimes(1);
-      expect(clientMaps.mapPromptToClient).toHaveBeenCalledTimes(3);
-      expect(clientMaps.mapPromptToClient).toHaveBeenCalledWith('prompt1', connectedClients[0]);
-      expect(clientMaps.mapPromptToClient).toHaveBeenCalledWith('prompt2', connectedClients[0]);
-      expect(clientMaps.mapPromptToClient).toHaveBeenCalledWith('prompt3', connectedClients[1]);
-
-      // Verify client request calls
-      expect(mockClient1.request).toHaveBeenCalledWith(
-        {
-          method: 'prompts/list',
-          params: {
-            cursor: undefined,
-            _meta: { test: 'metadata' },
-          },
-        },
-        ListPromptsResultSchema
-      );
-
-      expect(mockClient2.request).toHaveBeenCalledWith(
-        {
-          method: 'prompts/list',
-          params: {
-            cursor: undefined,
-            _meta: { test: 'metadata' },
-          },
-        },
-        ListPromptsResultSchema
-      );
-
-      // Verify result
-      expect(result).toEqual({
-        prompts: [
-          {
-            name: 'prompt1',
-            description: '[client1] Test Prompt 1',
-            inputSchema: { type: 'object' },
-          },
-          {
-            name: 'prompt2',
-            description: '[client1] Test Prompt 2',
-            inputSchema: { type: 'object' },
-          },
-          {
-            name: 'prompt3',
-            description: '[client2] Test Prompt 3',
-            inputSchema: { type: 'object' },
-          },
-        ],
-        nextCursor: undefined,
-      });
-    });
-
-    it('should handle errors from client requests', async () => {
-      registerListPromptsHandler(server, connectedClients);
-
-      // Extract the list prompts handler function
-      const listPromptsHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock console.error
-      console.error = vi.fn();
-
-      // Mock client responses
-      client1RequestMock.mockRejectedValueOnce(new Error('Client 1 error'));
-      client2RequestMock.mockResolvedValueOnce({
-        prompts: [
-          { name: 'prompt3', description: 'Test Prompt 3', inputSchema: { type: 'object' } },
-        ],
-      });
-
-      // Create a request object
-      const request = { params: {} };
-
-      // Call the handler with the request
-      const result = await listPromptsHandler(request);
-
-      // Verify error logging
-      expect(console.error).toHaveBeenCalledWith(
-        'Error fetching prompts from client1:',
-        expect.any(Error)
-      );
-
-      // Verify result only includes prompts from successful client
-      expect(result).toEqual({
-        prompts: [
-          {
-            name: 'prompt3',
-            description: '[client2] Test Prompt 3',
-            inputSchema: { type: 'object' },
-          },
-        ],
-        nextCursor: undefined,
-      });
-    });
-
-    it('should handle empty prompts array from clients', async () => {
-      registerListPromptsHandler(server, connectedClients);
-
-      // Extract the list prompts handler function
-      const listPromptsHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock client responses
-      client1RequestMock.mockResolvedValueOnce({ prompts: [] });
-      client2RequestMock.mockResolvedValueOnce({ prompts: null });
-
-      // Create a request object
-      const request = { params: {} };
-
-      // Call the handler with the request
-      const result = await listPromptsHandler(request);
-
-      // Verify result is an empty array
-      expect(result).toEqual({ prompts: [], nextCursor: undefined });
-    });
-  });
-
-  describe('registerGetPromptHandler', () => {
-    it('should register handler for prompts/get', () => {
-      registerGetPromptHandler(server);
-
-      expect(mockRequestHandler).toHaveBeenCalledTimes(1);
-      expect(mockRequestHandler).toHaveBeenCalledWith(GetPromptRequestSchema, expect.any(Function));
-    });
-
-    it('should forward prompt request to the appropriate client', async () => {
-      registerGetPromptHandler(server);
-
-      // Extract the get prompt handler function
-      const getPromptHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock clientMaps.getClientForPrompt
-      vi.mocked(clientMaps.getClientForPrompt).mockReturnValueOnce(connectedClients[0]);
-
-      // Mock client response
-      const mockPromptResult = { result: 'This is prompt content' };
-      client1RequestMock.mockResolvedValueOnce(mockPromptResult);
+      // Mock client.request to return a response
+      const mockResponse = { content: 'Test content' };
+      (mockClient1.client.request as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Create a request object
       const request = {
         params: {
-          name: 'prompt1',
+          name: 'test_prompt',
           arguments: { param1: 'value1' },
-          _meta: { progressToken: 'token123' },
         },
+        method: 'prompts/get' as const,
       };
 
       // Call the handler with the request
-      const result = await getPromptHandler(request);
+      const result = await handleGetPromptRequest(request);
 
-      // Verify clientMaps.getClientForPrompt call
-      expect(clientMaps.getClientForPrompt).toHaveBeenCalledWith('prompt1');
-
-      // Verify client request call
-      expect(mockClient1.request).toHaveBeenCalledWith(
+      // Verify client.request was called with correct params
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
         {
           method: 'prompts/get',
           params: {
-            name: 'prompt1',
+            name: 'test_prompt',
             arguments: { param1: 'value1' },
             _meta: {
-              progressToken: 'token123',
+              progressToken: undefined,
             },
           },
         },
-        GetPromptResultSchema
+        expect.anything()
       );
 
       // Verify result
-      expect(result).toEqual(mockPromptResult);
+      expect(result).toEqual(mockResponse);
     });
 
-    it('should throw an error when the prompt is not found', async () => {
-      registerGetPromptHandler(server);
+    it('should handle restart_server prompt with specific server', async () => {
+      // Mock loadConfig
+      const mockConfig = {
+        mcpServers: {
+          server1: { command: 'cmd1' },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValueOnce(mockConfig);
 
-      // Extract the get prompt handler function
-      const getPromptHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock clientMaps.getClientForPrompt to return undefined
-      vi.mocked(clientMaps.getClientForPrompt).mockReturnValueOnce(undefined);
+      // Mock restartClient to return a client
+      vi.mocked(restartClient).mockResolvedValueOnce({
+        name: 'server1',
+        client: {} as unknown as Client,
+        cleanup: async () => {},
+      });
 
       // Create a request object
       const request = {
         params: {
-          name: 'unknown-prompt',
-          arguments: {},
+          name: 'restart_server',
+          arguments: { server: 'server1' },
         },
-      };
-
-      // Call the handler with the request and expect it to throw
-      await expect(getPromptHandler(request)).rejects.toThrow('Unknown prompt: unknown-prompt');
-    });
-
-    it('should handle and propagate errors from the client', async () => {
-      registerGetPromptHandler(server);
-
-      // Extract the get prompt handler function
-      const getPromptHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock clientMaps.getClientForPrompt
-      vi.mocked(clientMaps.getClientForPrompt).mockReturnValueOnce(connectedClients[0]);
-
-      // Mock console.error
-      console.error = vi.fn();
-
-      // Mock client to throw an error
-      const mockError = new Error('Client error');
-      client1RequestMock.mockRejectedValueOnce(mockError);
-
-      // Create a request object
-      const request = {
-        params: {
-          name: 'prompt1',
-          arguments: {},
-        },
-      };
-
-      // Call the handler with the request and expect it to throw
-      await expect(getPromptHandler(request)).rejects.toThrow('Client error');
-
-      // Verify error logging
-      expect(console.error).toHaveBeenCalledWith('Error getting prompt from client1:', mockError);
-    });
-
-    it('should handle empty arguments in the request', async () => {
-      registerGetPromptHandler(server);
-
-      // Extract the get prompt handler function
-      const getPromptHandler = mockRequestHandler.mock.calls[0][1];
-
-      // Mock clientMaps.getClientForPrompt
-      vi.mocked(clientMaps.getClientForPrompt).mockReturnValueOnce(connectedClients[0]);
-
-      // Mock client response
-      const mockPromptResult = { result: 'This is prompt content' };
-      client1RequestMock.mockResolvedValueOnce(mockPromptResult);
-
-      // Create a request object with no arguments
-      const request = {
-        params: {
-          name: 'prompt1',
-        },
+        method: 'prompts/get' as const,
       };
 
       // Call the handler with the request
-      await getPromptHandler(request);
+      const result = await handleGetPromptRequest(request);
 
-      // Verify client request uses empty object for arguments
-      expect(mockClient1.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          params: expect.objectContaining({
-            arguments: {},
-          }),
-        }),
-        GetPromptResultSchema
+      // Verify config was loaded
+      expect(loadConfig).toHaveBeenCalledTimes(1);
+
+      // Verify client restart was attempted
+      expect(restartClient).toHaveBeenCalledTimes(1);
+      expect(restartClient).toHaveBeenCalledWith('server1', { command: 'cmd1' });
+
+      // Verify result
+      expect(result).toEqual({
+        content: 'Successfully restarted server: server1',
+        metadata: { success: true, server: 'server1' },
+      });
+    });
+
+    it('should handle restart_server prompt with all servers', async () => {
+      // Mock loadConfig
+      const mockConfig = {
+        mcpServers: {
+          server1: { command: 'cmd1' },
+          server2: { command: 'cmd2' },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValueOnce(mockConfig);
+
+      // Mock restartClient to return success for server1 and failure for server2
+      vi.mocked(restartClient).mockResolvedValueOnce({
+        name: 'server1',
+        client: {} as unknown as Client,
+        cleanup: async () => {},
+      });
+      vi.mocked(restartClient).mockResolvedValueOnce(null);
+
+      // Create a request object
+      const request = {
+        params: {
+          name: 'restart_server',
+          arguments: { server: 'all' },
+        },
+        method: 'prompts/get' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleGetPromptRequest(request);
+
+      // Verify config was loaded
+      expect(loadConfig).toHaveBeenCalledTimes(1);
+
+      // Verify client restart was attempted for both servers
+      expect(restartClient).toHaveBeenCalledTimes(2);
+      expect(restartClient).toHaveBeenCalledWith('server1', { command: 'cmd1' });
+      expect(restartClient).toHaveBeenCalledWith('server2', { command: 'cmd2' });
+
+      // Verify result
+      expect(result).toEqual({
+        content: 'Restarted 1/2 servers.',
+        metadata: {
+          restarted_servers: [
+            { name: 'server1', success: true },
+            { name: 'server2', success: false },
+          ],
+        },
+      });
+    });
+
+    it('should handle restart_server prompt with non-existent server', async () => {
+      // Mock loadConfig
+      const mockConfig = {
+        mcpServers: {
+          server1: { command: 'cmd1' },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValueOnce(mockConfig);
+
+      // Create a request object with a non-existent server
+      const request = {
+        params: {
+          name: 'restart_server',
+          arguments: { server: 'non-existent-server' },
+        },
+        method: 'prompts/get' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleGetPromptRequest(request);
+
+      // Verify config was loaded
+      expect(loadConfig).toHaveBeenCalledTimes(1);
+
+      // Verify no client restart was attempted
+      expect(restartClient).not.toHaveBeenCalled();
+
+      // Verify error result
+      expect(result).toEqual({
+        content: "Error restarting server: Server 'non-existent-server' not found in configuration",
+        metadata: {
+          success: false,
+          error: "Server 'non-existent-server' not found in configuration",
+        },
+      });
+    });
+
+    it('should handle restart_server prompt with missing server argument', async () => {
+      // Create a request object without a server argument
+      const request = {
+        params: {
+          name: 'restart_server',
+          arguments: {}, // Empty arguments
+        },
+        method: 'prompts/get' as const,
+      };
+
+      try {
+        // Call the handler with the request
+        await handleGetPromptRequest(request);
+        // If it doesn't throw, the test should fail
+        expect(true).toBe(false);
+      } catch (error: unknown) {
+        // Verify error message
+        if (error instanceof Error) {
+          expect(error.message).toBe('Server name is required to restart a server');
+        } else {
+          // If it's not an Error instance, the test should fail
+          expect(true).toBe(false);
+        }
+      }
+    });
+
+    it('should handle restart_server prompt with server restart error', async () => {
+      // Mock loadConfig
+      const mockConfig = {
+        mcpServers: {
+          server1: { command: 'cmd1' },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValueOnce(mockConfig);
+
+      // Mock restartClient to throw an error
+      const errorMessage = 'Failed to start process';
+      vi.mocked(restartClient).mockRejectedValueOnce(new Error(errorMessage));
+
+      // Create a request object
+      const request = {
+        params: {
+          name: 'restart_server',
+          arguments: { server: 'server1' },
+        },
+        method: 'prompts/get' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleGetPromptRequest(request);
+
+      // Verify error handling
+      expect(result).toEqual({
+        content: `Error restarting server: ${errorMessage}`,
+        metadata: {
+          success: false,
+          error: errorMessage,
+        },
+      });
+    });
+  });
+
+  describe('handleListPromptsRequest', () => {
+    it('should include restart_server prompt in the list', async () => {
+      // Mock client.request for both clients to return empty prompt arrays
+      (mockClient1.client.request as ReturnType<typeof vi.fn>).mockResolvedValue({ prompts: [] });
+      (mockClient2.client.request as ReturnType<typeof vi.fn>).mockResolvedValue({ prompts: [] });
+
+      // Create a request object
+      const request = {
+        params: {},
+        method: 'prompts/list' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleListPromptsRequest(request, connectedClients);
+
+      // Verify that restart_server prompt is included
+      expect(result.prompts).toContainEqual({
+        arguments: [
+          {
+            description: 'The name of the server to restart, or "all" to restart all servers',
+            name: 'server',
+            required: true,
+          },
+        ],
+        description: 'Restart a specified server or all servers',
+        name: 'restart_server',
+      });
+    });
+
+    it('should aggregate prompts from multiple clients', async () => {
+      // Mock client.request to return different prompt arrays
+      (mockClient1.client.request as ReturnType<typeof vi.fn>).mockResolvedValue({
+        prompts: [
+          {
+            name: 'prompt1',
+            description: 'Prompt 1 description',
+          },
+        ],
+      });
+
+      (mockClient2.client.request as ReturnType<typeof vi.fn>).mockResolvedValue({
+        prompts: [
+          {
+            name: 'prompt2',
+            description: 'Prompt 2 description',
+          },
+        ],
+      });
+
+      // Create a request object
+      const request = {
+        params: {},
+        method: 'prompts/list' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleListPromptsRequest(request, connectedClients);
+
+      // Verify that all prompts are included with server names in descriptions
+      expect(result.prompts).toContainEqual({
+        name: 'prompt1',
+        description: '[client1] Prompt 1 description',
+      });
+
+      expect(result.prompts).toContainEqual({
+        name: 'prompt2',
+        description: '[client2] Prompt 2 description',
+      });
+
+      // Verify that mapPromptToClient was called for each prompt
+      expect(clientMaps.mapPromptToClient).toHaveBeenCalledWith('prompt1', mockClient1);
+      expect(clientMaps.mapPromptToClient).toHaveBeenCalledWith('prompt2', mockClient2);
+    });
+
+    it('should handle errors from client request', async () => {
+      // Mock client1.request to throw an error
+      const errorMessage = 'Failed to fetch prompts';
+      (mockClient1.client.request as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error(errorMessage)
       );
+
+      // Mock client2.request to return prompts normally
+      (mockClient2.client.request as ReturnType<typeof vi.fn>).mockResolvedValue({
+        prompts: [
+          {
+            name: 'prompt2',
+            description: 'Prompt 2 description',
+          },
+        ],
+      });
+
+      // Create a request object
+      const request = {
+        params: {},
+        method: 'prompts/list' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleListPromptsRequest(request, connectedClients);
+
+      // Verify that we still get the prompts from client2
+      expect(result.prompts).toContainEqual({
+        name: 'prompt2',
+        description: '[client2] Prompt 2 description',
+      });
+
+      // Verify that restart_server prompt is still included
+      expect(result.prompts).toContainEqual({
+        arguments: [
+          {
+            description: 'The name of the server to restart, or "all" to restart all servers',
+            name: 'server',
+            required: true,
+          },
+        ],
+        description: 'Restart a specified server or all servers',
+        name: 'restart_server',
+      });
+    });
+  });
+
+  describe('handleRestartServerPrompt', () => {
+    it('should restart a specific server', async () => {
+      // Mock loadConfig
+      const mockConfig = {
+        mcpServers: {
+          server1: { command: 'cmd1' },
+        },
+      };
+      vi.mocked(loadConfig).mockResolvedValueOnce(mockConfig);
+
+      // Mock restartClient to return a client
+      vi.mocked(restartClient).mockResolvedValueOnce({
+        name: 'server1',
+        client: {} as unknown as Client,
+        cleanup: async () => {},
+      });
+
+      // Create a request object
+      const request = {
+        params: {
+          name: 'restart_server',
+          arguments: { server: 'server1' },
+        },
+        method: 'prompts/get' as const,
+      };
+
+      // Call the handler with the request
+      const result = await handleRestartServerPrompt(request);
+
+      // Verify result
+      expect(result).toEqual({
+        content: 'Successfully restarted server: server1',
+        metadata: { success: true, server: 'server1' },
+      });
     });
   });
 });
