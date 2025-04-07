@@ -1,8 +1,8 @@
-# MCP Coordinator Specification
+# MCP Proxy Hub Specification
 
 ## Overview
 
-MCP Coordinator is a proxy server that aggregates multiple MCP (Model Context Protocol) resource servers and serves them through a single interface. This server acts as a central hub that can:
+MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Protocol) resource servers and serves them through a single interface. This server acts as a central hub that can:
 
 - Connect to and manage multiple MCP resource servers
 - Expose their combined capabilities through a unified interface
@@ -233,8 +233,8 @@ Add the following to the configuration file (MacOS: `~/Library/Application Suppo
 ```json
 {
   "mcpServers": {
-    "mcp-coordinator": {
-      "command": "/path/to/mcp-coordinator/build/index.js",
+    "mcp-proxy-hub": {
+      "command": "/path/to/mcp-proxy-hub/build/index.js",
       "env": {
         "MCP_PROXY_CONFIG_PATH": "/absolute/path/to/your/config.json",
         "KEEP_SERVER_OPEN": "1"
