@@ -126,7 +126,7 @@ export function createDefaultLogger(options?: {
   fileName?: string;
   level?: LogLevel;
 }): Logger {
-  const defaultDir = '/tmp/mcp-coordinator';
+  const defaultDir = '/tmp/mcp-proxy-hub';
 
   return new Logger({
     dirPath: options?.dirPath ?? defaultDir,

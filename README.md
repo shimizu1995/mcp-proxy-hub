@@ -1,4 +1,4 @@
-# MCP Coordinator
+# MCP Proxy Hub
 
 An MCP proxy server that aggregates and serves multiple MCP resource servers through a single interface. This server acts as a central hub that can:
 
@@ -137,8 +137,8 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "mcp-coordinator": {
-      "command": "/path/to/mcp-coordinator/build/index.js",
+    "mcp-proxy-hub": {
+      "command": "/path/to/mcp-proxy-hub/build/index.js",
       "env": {
         "MCP_PROXY_CONFIG_PATH": "/absolute/path/to/your/config.json",
         "KEEP_SERVER_OPEN": "1"

@@ -1,8 +1,8 @@
-# MCP Coordinator 仕様書
+# MCP Proxy Hub 仕様書
 
 ## 概要
 
-MCP Coordinator（MCPコーディネーター）は、複数のMCP（Model Context Protocol）リソースサーバーを集約し、単一のインターフェースを通して提供するプロキシサーバーです。このサーバーは中央ハブとして機能し、以下のような機能を提供します：
+MCP Proxy Hub（MCPプロキシハブ）は、複数のMCP（Model Context Protocol）リソースサーバーを集約し、単一のインターフェースを通して提供するプロキシサーバーです。このサーバーは中央ハブとして機能し、以下のような機能を提供します：
 
 - 複数のMCPリソースサーバーへの接続と管理
 - それらの組み合わせた機能を統一されたインターフェースを通して公開
@@ -233,8 +233,8 @@ MCP Coordinator（MCPコーディネーター）は、複数のMCP（Model Conte
 ```json
 {
   "mcpServers": {
-    "mcp-coordinator": {
-      "command": "/path/to/mcp-coordinator/build/index.js",
+    "mcp-proxy-hub": {
+      "command": "/path/to/mcp-proxy-hub/build/index.js",
       "env": {
         "MCP_PROXY_CONFIG_PATH": "/absolute/path/to/your/config.json",
         "KEEP_SERVER_OPEN": "1"
