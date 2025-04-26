@@ -1,5 +1,6 @@
 export interface EnvVarConfig {
   name: string;
+  value: string;
   expand?: boolean;
   unexpand?: boolean;
 }

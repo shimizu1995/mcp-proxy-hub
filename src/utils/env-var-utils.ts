@@ -43,13 +43,11 @@ function expandEnvVarsInString(str: string, envVarConfigs: EnvVarConfig[]): stri
   for (const config of envVarConfigs) {
     if (config.expand) {
       const envVarName = config.name;
-      const envVarValue = process.env[envVarName];
+      const envVarValue = config.value;
 
-      if (envVarValue) {
-        // Using double backslash to escape the $ and properly escape the curly braces
-        const regex = new RegExp(`\\$\\{${envVarName}\\}`, 'g');
-        result = result.replace(regex, envVarValue);
-      }
+      // Using double backslash to escape the $ and properly escape the curly braces
+      const regex = new RegExp(`\\$\\{${envVarName}\\}`, 'g');
+      result = result.replace(regex, envVarValue);
     }
   }
 
@@ -95,9 +93,9 @@ function unexpandEnvVarsInString(str: string, envVarConfigs: EnvVarConfig[]): st
   for (const config of envVarConfigs) {
     if (config.unexpand) {
       const envVarName = config.name;
-      const envVarValue = process.env[envVarName];
+      const envVarValue = config.value;
 
-      if (envVarValue && result.includes(envVarValue)) {
+      if (result.includes(envVarValue)) {
         result = result.replace(new RegExp(envVarValue, 'g'), `\${${envVarName}}`);
       }
     }

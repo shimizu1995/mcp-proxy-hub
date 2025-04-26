@@ -71,8 +71,8 @@ describe('Tool Call Handler', () => {
       client1: {
         command: 'test-command',
         envVars: [
-          { name: 'TEST_VAR', expand: true, unexpand: true },
-          { name: 'API_KEY', expand: true, unexpand: false },
+          { name: 'TEST_VAR', value: 'test-value', expand: true, unexpand: true },
+          { name: 'API_KEY', value: 'secret-api-key', expand: true, unexpand: false },
         ],
       } as Record<string, unknown>,
     };

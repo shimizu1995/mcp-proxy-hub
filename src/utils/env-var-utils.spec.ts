@@ -27,7 +27,9 @@ describe('env-var-utils', () => {
     });
 
     it('should return the original object if not an object, array, or string', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', expand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+      ];
       expect(expandEnvVars(123, envVarConfigs)).toBe(123);
       expect(expandEnvVars(null, envVarConfigs)).toBe(null);
       expect(expandEnvVars(undefined, envVarConfigs)).toBe(undefined);
@@ -35,19 +37,23 @@ describe('env-var-utils', () => {
     });
 
     it('should expand environment variables in a string', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', expand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+      ];
       expect(expandEnvVars('this is a ${TEST_VAR}', envVarConfigs)).toBe('this is a test-value');
     });
 
     it('should not expand environment variables if expand is false', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', expand: false }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', expand: false },
+      ];
       expect(expandEnvVars('this is a ${TEST_VAR}', envVarConfigs)).toBe('this is a ${TEST_VAR}');
     });
 
     it('should expand multiple environment variables in a string', () => {
       const envVarConfigs: EnvVarConfig[] = [
-        { name: 'TEST_VAR', expand: true },
-        { name: 'API_KEY', expand: true },
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+        { name: 'API_KEY', value: 'secret-api-key', expand: true },
       ];
       expect(expandEnvVars('${TEST_VAR} with ${API_KEY}', envVarConfigs)).toBe(
         'test-value with secret-api-key'
@@ -55,14 +61,18 @@ describe('env-var-utils', () => {
     });
 
     it('should recursively expand environment variables in arrays', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', expand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+      ];
       const input = ['${TEST_VAR}', 'normal value', ['nested ${TEST_VAR}']];
       const expected = ['test-value', 'normal value', ['nested test-value']];
       expect(expandEnvVars(input, envVarConfigs)).toEqual(expected);
     });
 
     it('should recursively expand environment variables in objects', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', expand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+      ];
       const input = {
         key1: '${TEST_VAR}',
         key2: 'normal value',
@@ -82,8 +92,8 @@ describe('env-var-utils', () => {
 
     it('should handle complex nested structures', () => {
       const envVarConfigs: EnvVarConfig[] = [
-        { name: 'TEST_VAR', expand: true },
-        { name: 'API_KEY', expand: true },
+        { name: 'TEST_VAR', value: 'test-value', expand: true },
+        { name: 'API_KEY', value: 'secret-api-key', expand: true },
       ];
       const input = {
         string: '${TEST_VAR}',
@@ -113,7 +123,9 @@ describe('env-var-utils', () => {
     });
 
     it('should return the original object if not an object, array, or string', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', unexpand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+      ];
       expect(unexpandEnvVars(123, envVarConfigs)).toBe(123);
       expect(unexpandEnvVars(null, envVarConfigs)).toBe(null);
       expect(unexpandEnvVars(undefined, envVarConfigs)).toBe(undefined);
@@ -121,19 +133,23 @@ describe('env-var-utils', () => {
     });
 
     it('should replace values with environment variable references in a string', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', unexpand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+      ];
       expect(unexpandEnvVars('this is a test-value', envVarConfigs)).toBe('this is a ${TEST_VAR}');
     });
 
     it('should not replace values if unexpand is false', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', unexpand: false }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', unexpand: false },
+      ];
       expect(unexpandEnvVars('this is a test-value', envVarConfigs)).toBe('this is a test-value');
     });
 
     it('should replace multiple values in a string', () => {
       const envVarConfigs: EnvVarConfig[] = [
-        { name: 'TEST_VAR', unexpand: true },
-        { name: 'API_KEY', unexpand: true },
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+        { name: 'API_KEY', value: 'secret-api-key', unexpand: true },
       ];
       expect(unexpandEnvVars('test-value with secret-api-key', envVarConfigs)).toBe(
         '${TEST_VAR} with ${API_KEY}'
@@ -141,14 +157,18 @@ describe('env-var-utils', () => {
     });
 
     it('should recursively replace values in arrays', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', unexpand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+      ];
       const input = ['test-value', 'normal value', ['nested test-value']];
       const expected = ['${TEST_VAR}', 'normal value', ['nested ${TEST_VAR}']];
       expect(unexpandEnvVars(input, envVarConfigs)).toEqual(expected);
     });
 
     it('should recursively replace values in objects', () => {
-      const envVarConfigs: EnvVarConfig[] = [{ name: 'TEST_VAR', unexpand: true }];
+      const envVarConfigs: EnvVarConfig[] = [
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+      ];
       const input = {
         key1: 'test-value',
         key2: 'normal value',
@@ -168,8 +188,8 @@ describe('env-var-utils', () => {
 
     it('should handle complex nested structures', () => {
       const envVarConfigs: EnvVarConfig[] = [
-        { name: 'TEST_VAR', unexpand: true },
-        { name: 'API_KEY', unexpand: true },
+        { name: 'TEST_VAR', value: 'test-value', unexpand: true },
+        { name: 'API_KEY', value: 'secret-api-key', unexpand: true },
       ];
       const input = {
         string: 'test-value',
