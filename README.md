@@ -40,6 +40,14 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
   }
   ```
 
+### Environment Variable Support
+
+- Automatically expand environment variables in tool arguments
+- Automatically replace sensitive values with variable references in responses
+- Configure which variables should be expanded/unexpanded via configuration
+- Each variable can be independently configured for expansion and unexpansion
+- Secure handling of sensitive information like API keys
+
 ### Prompt Handling
 
 - Aggregate prompts from all connected servers
@@ -65,12 +73,14 @@ cp config.example.json config.json
   - `env`: Environment variables (optional)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
+  - `envVars`: Environment variable configuration for tool arguments and responses (optional)
 
 - **SSE-type Server**:
   - `type`: "sse" (required)
   - `url`: URL of the SSE server (required)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
+  - `envVars`: Environment variable configuration for tool arguments and responses (optional)
 
 #### Tool Filtering Configuration
 
@@ -82,6 +92,24 @@ cp config.example.json config.json
 - **hiddenTools**:
   - Hides specified tools
   - Array of tool name strings to hide
+
+#### Environment Variables Configuration
+
+- **envVars**:
+  - Array of environment variable configurations
+  - Each configuration has the following properties:
+    - `name`: Name of the environment variable
+    - `value`: Value of the environment variable
+    - `expand`: Whether to expand this variable in tool arguments (optional, defaults to false)
+    - `unexpand`: Whether to unexpand this variable in tool responses (optional, defaults to false)
+  - Example:
+
+    ```json
+    "envVars": [
+      { "name": "API_KEY", "value": "my-api-key", "expand": true, "unexpand": true },
+      { "name": "USER_ID", "value": "user123", "expand": true, "unexpand": false }
+    ]
+    ```
 
 #### Custom Tool Configuration
 
