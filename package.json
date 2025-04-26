@@ -1,13 +1,13 @@
 {
-  "name": "mcp-proxy-server",
+  "name": "mcp-proxy-hub",
   "version": "0.1.0",
   "author": "Adam Wattis",
   "license": "MIT",
-  "description": "An MCP proxy server that aggregates and serves multiple MCP resource servers through a single interface",
+  "description": "An MCP proxy hub that aggregates and serves multiple MCP resource servers through a single interface",
   "private": true,
   "type": "module",
   "bin": {
-    "mcp-proxy-server": "./build/index.js"
+    "mcp-proxy-hub": "./build/index.js"
   },
   "files": [
     "build"

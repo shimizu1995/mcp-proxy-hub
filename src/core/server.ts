@@ -16,7 +16,7 @@ export function setupEventSource(): void {
 export function createMCPServer(): Server {
   return new Server(
     {
-      name: 'mcp-proxy-server',
+      name: 'mcp-proxy-hub',
       version: '1.0.0',
     },
     {
