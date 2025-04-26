@@ -122,7 +122,26 @@ describe('Tool Call Handler', () => {
     expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
       'customTool',
       { server: 'server1', tool: 'tool1' },
-      { progressToken: 'token123' }
+      { progressToken: 'token123' },
+      {
+        client1: {
+          command: 'test-command',
+          envVars: [
+            {
+              expand: true,
+              name: 'TEST_VAR',
+              unexpand: true,
+              value: 'test-value',
+            },
+            {
+              expand: true,
+              name: 'API_KEY',
+              unexpand: false,
+              value: 'secret-api-key',
+            },
+          ],
+        },
+      }
     );
 
     // Verify validateToolAccess was not called

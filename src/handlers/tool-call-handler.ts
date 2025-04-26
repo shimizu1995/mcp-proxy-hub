@@ -32,7 +32,12 @@ export async function handleToolCall(
 
   // Handle custom tool call
   if (clientForTool.name === 'custom') {
-    return await customToolService.handleCustomToolCall(toolName, args, request.params._meta);
+    return await customToolService.handleCustomToolCall(
+      toolName,
+      args,
+      request.params._meta,
+      serverConfigs
+    );
   }
 
   // Find the original name mapping from the client if it exists

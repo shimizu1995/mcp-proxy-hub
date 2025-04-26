@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CustomToolService, ToolWithServerName } from './custom-tool-service.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -256,6 +256,21 @@ describe('CustomToolService', () => {
   });
 
   describe('handleCustomToolCall', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = {
+        ...originalEnv,
+        TEST_VAR: 'test-value',
+        API_KEY: 'secret-api-key',
+        USER_ID: '12345',
+      };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
     it('should throw an error if arguments are missing', async () => {
       await expect(customToolService.handleCustomToolCall('customTool', undefined)).rejects.toThrow(
         'Missing required parameters'
@@ -367,6 +382,73 @@ describe('CustomToolService', () => {
 
       consoleLogSpy.mockRestore();
       consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle environment variable expansion and unexpansion', async () => {
+      // Mock getClientForCustomTool to return mockClient1
+      vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
+
+      // Mock client.request to return a result with sensitive data
+      const mockResult = {
+        success: true,
+        data: 'Response contains test-value and secret-api-key',
+      };
+      mockClient1.client.request = vi.fn().mockResolvedValueOnce(mockResult);
+
+      // Mock console.log
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      // Create a server config with environment variable settings
+      const serverConfigs = {
+        server1: {
+          command: 'test-command',
+          envVars: [
+            { name: 'TEST_VAR', value: 'test-value', expand: true, unexpand: true },
+            { name: 'API_KEY', value: 'secret-api-key', expand: true, unexpand: true },
+          ],
+        },
+      };
+
+      // Call with args containing environment variable references
+      const result = await customToolService.handleCustomToolCall(
+        'customTool',
+        {
+          server: 'server1',
+          tool: 'tool1',
+          args: {
+            apiKey: '${API_KEY}',
+            config: 'Config with ${TEST_VAR}',
+          },
+        },
+        { progressToken: 'token123' },
+        serverConfigs
+      );
+
+      // Verify client.request was called with expanded variables
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'tool1',
+            arguments: {
+              apiKey: 'secret-api-key',
+              config: 'Config with test-value',
+            },
+            _meta: {
+              progressToken: 'token123',
+            },
+          },
+        },
+        expect.anything()
+      );
+
+      // Verify result has unexpanded values
+      expect(result).toEqual({
+        success: true,
+        data: 'Response contains ${TEST_VAR} and ${API_KEY}',
+      });
+
+      consoleLogSpy.mockRestore();
     });
   });
 
