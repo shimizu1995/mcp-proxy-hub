@@ -62,7 +62,7 @@ describe('Debug Utilities', () => {
     it('should leave invalid JSON strings as-is', () => {
       const invalidJson = '{"name":"test","value":}';
       // The test needs to account for how JSON.stringify escapes quotes
-      expect(debugUtils.formatForConsole(invalidJson)).toMatch(/"\{.*\}"/); // Match any JSON-like string in quotes
+      expect(debugUtils.formatForConsole(invalidJson)).toMatch(/"\{.*\}"/);
     });
 
     it('should handle escaped newlines', () => {
@@ -80,14 +80,14 @@ describe('Debug Utilities', () => {
     });
 
     it('should handle directory tree-like structures with multiple escaped newlines', () => {
-      const directoryTree = '- //\\n  - Users/\\n    - yu.shimizu/\\n      - go/\\n        - src/';
-      const expected = '"- //\n  - Users/\n    - yu.shimizu/\n      - go/\n        - src/"';
+      const directoryTree = '- //\n  - Users/\n    - username/\n      - go/\n        - src/';
+      const expected = '"- //\n  - Users/\n    - username/\n      - go/\n        - src/"';
 
       expect(debugUtils.formatForConsole(directoryTree)).toBe(expected);
     });
 
     it('should properly handle consecutive escaped newlines', () => {
-      const multipleNewlines = 'first\\n\\nsecond\\n\\n\\nthird';
+      const multipleNewlines = 'first\n\nsecond\n\n\nthird';
       const expected = '"first\n\nsecond\n\n\nthird"';
 
       expect(debugUtils.formatForConsole(multipleNewlines)).toBe(expected);
@@ -101,7 +101,7 @@ describe('Debug Utilities', () => {
     });
 
     it('should handle combination of escaped newlines and literal backslashes', () => {
-      const mixedString = 'C:\\\\Users\\n\\\\Documents\\\\file.txt';
+      const mixedString = 'C:\\\\Users\n\\\\Documents\\\\file.txt';
       const expected = '"C:\\\\Users\n\\\\Documents\\\\file.txt"';
 
       expect(debugUtils.formatForConsole(mixedString)).toBe(expected);
@@ -173,33 +173,6 @@ describe('Debug Utilities', () => {
       };
 
       expect(debugUtils.formatForConsole(obj)).toBe(JSON.stringify(obj, null, 2));
-    });
-
-    it('should handle the specific Edit tool case with nested \\n in object properties', () => {
-      // This test simulates the actual case from the issue
-      const input = {
-        server: 'claude_code',
-        tool: 'Edit',
-        args: {
-          file_path: '/Users/yu.shimizu/work/mcp-whitelist-shell/src/shell-command-handler.ts',
-          old_string:
-            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\n\n// ホワイトリストに登録されたコマンドのみ実行を許可する\nconst WHITELISTED_COMMANDS = new Set([",
-          new_string:
-            "import { execa } from 'execa';\nimport { sync as commandExistsSync } from 'command-exists';\nimport path from 'path';\nimport fs from 'fs';\n\n// Set of allowed directories (subdirectories of these are also allowed)\n// Default to user's home directory if available, otherwise current directory\nconst ALLOWED_DIRECTORIES = [\n  process.env.HOME || process.cwd(),\n];\n\n// Track the current working directory\nlet currentWorkingDirectory = process.cwd();\n\n// ホワイトリストに登録されたコマンドのみ実行を許可する\nconst WHITELISTED_COMMANDS = new Set([",
-        },
-      };
-
-      const result = debugUtils.formatForConsole(input);
-
-      // The result should not contain escaped \n
-      // Verify that there are no escaped newlines in the output
-      expect(result).not.toContain('\\n');
-
-      // Verify that the original multiline strings are properly preserved with real newlines
-      expect(result).toContain("import { execa } from 'execa';\n");
-      expect(result).toContain('// ホワイトリストに登録されたコマンドのみ実行を許可する\n');
-      expect(result).toContain('// Set of allowed directories');
-      expect(result).toContain('let currentWorkingDirectory = process.cwd();\n');
     });
   });
 

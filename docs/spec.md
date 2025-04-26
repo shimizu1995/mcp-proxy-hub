@@ -284,5 +284,5 @@ npm run dev:sse
 ### Production Execution
 
 ```bash
-MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-server
+MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-hub
 ```
