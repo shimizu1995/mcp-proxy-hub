@@ -7,6 +7,7 @@ import { clientMaps } from '../mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ConnectedClient } from '../client.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { Config, ServerName, ServerConfig } from '../config.js';
 
 // Mock dependencies
 vi.mock('../services/tool-service.js', () => ({
@@ -42,7 +43,8 @@ describe('Tool Handlers', () => {
   let mockClient1: ConnectedClient;
   let mockClient2: ConnectedClient;
   let connectedClients: ConnectedClient[];
-  let serverConfigs: Record<string, Record<string, unknown>>;
+  let serverConfigs: Record<ServerName, ServerConfig>;
+  let config: Config;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,6 +76,11 @@ describe('Tool Handlers', () => {
       client2: {
         command: 'test-command-2',
       },
+    };
+
+    config = {
+      mcpServers: serverConfigs,
+      envVars: [{ name: 'GLOBAL_VAR', value: 'global-value', expand: true, unexpand: true }],
     };
   });
 
@@ -231,9 +238,7 @@ describe('Tool Handlers', () => {
       };
 
       // Call the handler and expect it to throw
-      await expect(handleToolCall(request, serverConfigs)).rejects.toThrow(
-        'Unknown tool: unknown-tool'
-      );
+      await expect(handleToolCall(request, config)).rejects.toThrow('Unknown tool: unknown-tool');
     });
 
     it('should call the custom tool service for custom tools', async () => {
@@ -264,25 +269,19 @@ describe('Tool Handlers', () => {
       };
 
       // Call the handler
-      const result = await handleToolCall(request, serverConfigs);
+      const result = await handleToolCall(request, config);
 
       // Verify customToolService.handleCustomToolCall was called
       expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
         'customTool',
         { param: 'value' },
         { progressToken: 'token123' },
-        {
-          client1: {
-            command: 'test-command',
-          },
-          client2: {
-            command: 'test-command-2',
-          },
-        }
+        config.mcpServers,
+        config.envVars
       );
 
       // Verify result
-      expect(result).toBe(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
 
     it('should call executeToolCall with the correct parameters', async () => {
@@ -308,7 +307,7 @@ describe('Tool Handlers', () => {
       };
 
       // Call the handler
-      const result = await handleToolCall(request, serverConfigs);
+      const result = await handleToolCall(request, config);
 
       // Verify validateToolAccess was called
       expect(toolService.validateToolAccess).toHaveBeenCalledWith(
@@ -327,7 +326,7 @@ describe('Tool Handlers', () => {
       );
 
       // Verify result
-      expect(result).toBe(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
   });
 });

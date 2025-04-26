@@ -5,6 +5,7 @@ import { customToolService } from '../services/custom-tool-service.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ConnectedClient } from '../client.js';
+import { Config, ServerName, ServerConfig } from '../config.js';
 
 // Mock dependencies
 vi.mock('../services/tool-service.js', () => ({
@@ -39,8 +40,10 @@ vi.mock('../mappers/client-maps.js', () => ({
 describe('Tool Call Handler', () => {
   let mockClient: ConnectedClient;
   let mockCustomClient: ConnectedClient;
-  let serverConfigs: Record<string, Record<string, unknown>>;
+  let serverConfigs: Record<ServerName, ServerConfig>;
   const originalEnv = process.env;
+
+  let config: Config;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,7 +77,12 @@ describe('Tool Call Handler', () => {
           { name: 'TEST_VAR', value: 'test-value', expand: true, unexpand: true },
           { name: 'API_KEY', value: 'secret-api-key', expand: true, unexpand: false },
         ],
-      } as Record<string, unknown>,
+      },
+    };
+
+    config = {
+      mcpServers: serverConfigs,
+      envVars: [{ name: 'GLOBAL_VAR', value: 'global-value', expand: true, unexpand: true }],
     };
   });
 
@@ -94,9 +102,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    await expect(handleToolCall(request, serverConfigs)).rejects.toThrow(
-      'Unknown tool: unknownTool'
-    );
+    await expect(handleToolCall(request, config)).rejects.toThrow('Unknown tool: unknownTool');
   });
 
   it('should handle custom tool call', async () => {
@@ -116,32 +122,15 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    const result = await handleToolCall(request, serverConfigs);
+    const result = await handleToolCall(request, config);
 
     // Verify handleCustomToolCall was called
     expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
       'customTool',
       { server: 'server1', tool: 'tool1' },
       { progressToken: 'token123' },
-      {
-        client1: {
-          command: 'test-command',
-          envVars: [
-            {
-              expand: true,
-              name: 'TEST_VAR',
-              unexpand: true,
-              value: 'test-value',
-            },
-            {
-              expand: true,
-              name: 'API_KEY',
-              unexpand: false,
-              value: 'secret-api-key',
-            },
-          ],
-        },
-      }
+      config.mcpServers,
+      config.envVars
     );
 
     // Verify validateToolAccess was not called
@@ -168,7 +157,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    const result = await handleToolCall(request, serverConfigs);
+    const result = await handleToolCall(request, config);
 
     // Verify executeToolCall was called
     expect(toolService.executeToolCall).toHaveBeenCalledWith(
@@ -204,7 +193,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    await handleToolCall(request, serverConfigs);
+    await handleToolCall(request, config);
 
     // Verify validateToolAccess and executeToolCall were called with the original name
     expect(toolService.validateToolAccess).toHaveBeenCalledWith(
@@ -238,7 +227,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    const result = await handleToolCall(request, serverConfigs);
+    const result = await handleToolCall(request, config);
 
     // Verify executeToolCall was called with undefined arguments
     expect(toolService.executeToolCall).toHaveBeenCalledWith(
@@ -272,7 +261,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    const result = await handleToolCall(request, serverConfigs);
+    const result = await handleToolCall(request, config);
 
     // Verify executeToolCall was called with expanded variables
     expect(toolService.executeToolCall).toHaveBeenCalledWith(
@@ -307,7 +296,7 @@ describe('Tool Call Handler', () => {
       },
     };
 
-    await handleToolCall(request, serverConfigs);
+    await handleToolCall(request, config);
 
     // Verify executeToolCall was called with the correct parameters
     expect(toolService.executeToolCall).toHaveBeenCalledWith(

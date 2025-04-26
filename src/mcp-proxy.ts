@@ -42,7 +42,7 @@ export const createServer = async () => {
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    return await handleToolCall(request, config.mcpServers);
+    return await handleToolCall(request, config);
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {

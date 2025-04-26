@@ -45,6 +45,8 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
 - Automatically expand environment variables in tool arguments
 - Automatically replace sensitive values with variable references in responses
 - Configure which variables should be expanded/unexpanded via configuration
+- Support for both global (all servers) and server-specific environment variables
+- Server-specific variables take precedence over global variables with the same name
 - Each variable can be independently configured for expansion and unexpansion
 - Environment variables are only expanded when using the `${VARIABLE_NAME}` syntax (e.g., `${API_KEY}`). The `$VARIABLE_NAME` syntax is not supported.
 - Secure handling of sensitive information like API keys
@@ -96,9 +98,9 @@ cp config.example.json config.json
 
 #### Environment Variables Configuration
 
-- **envVars**:
+- **Server-specific envVars**:
 
-  - Array of environment variable configurations
+  - Array of environment variable configurations for a specific server
   - Each configuration has the following properties:
     - `name`: Name of the environment variable
     - `value`: Value of the environment variable
@@ -110,6 +112,21 @@ cp config.example.json config.json
     "envVars": [
       { "name": "API_KEY", "value": "my-api-key", "expand": true, "unexpand": true },
       { "name": "USER_ID", "value": "user123", "expand": true, "unexpand": false }
+    ]
+    ```
+
+- **Global envVars**:
+
+  - Array of environment variable configurations applied to all servers
+  - Uses the same configuration format as server-specific envVars
+  - Server-specific variables with the same name override global variables
+  - Defined at the root level of the configuration file
+  - Example:
+
+    ```json
+    "envVars": [
+      { "name": "GLOBAL_API_KEY", "value": "global-api-key", "expand": true, "unexpand": true },
+      { "name": "GLOBAL_ENV", "value": "production", "expand": true, "unexpand": false }
     ]
     ```
 

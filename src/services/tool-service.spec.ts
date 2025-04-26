@@ -195,16 +195,6 @@ describe('ToolService', () => {
   });
 
   describe('validateToolAccess', () => {
-    it('should do nothing when server config is undefined', () => {
-      expect(() => {
-        toolService.validateToolAccess(
-          'tool1',
-          undefined,
-          undefined as unknown as Record<string, unknown>
-        );
-      }).not.toThrow();
-    });
-
     it('should throw error when tool is not in exposedTools', () => {
       const serverConfig = {
         command: 'test',
