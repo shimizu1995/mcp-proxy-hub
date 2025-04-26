@@ -8,6 +8,9 @@ import {
   logCustomToolError,
 } from '../utils/debug-utils.js';
 import { ToolConfig } from '../config.js';
+import { expandEnvVars, unexpandEnvVars } from '../utils/env-var-utils.js';
+import { JsonObject } from '../types/json.js';
+import { ServerConfig } from '../models/config.js';
 
 // Custom client for handling custom tools
 const customClient: ConnectedClient = {
@@ -211,7 +214,8 @@ For example, to use the Edit tool from claude_code, your request would look like
   public async handleCustomToolCall(
     customToolName: string,
     requestArgs: Record<string, unknown> | undefined,
-    meta?: { progressToken?: string | number }
+    meta?: { progressToken?: string | number },
+    serverConfigs?: Record<string, ServerConfig>
   ) {
     if (!requestArgs) {
       throw new Error('Missing required parameters');
@@ -245,13 +249,20 @@ For example, to use the Edit tool from claude_code, your request would look like
 
       console.log(`Forwarding ${customToolName} tool call to server ${server}, tool ${tool}`);
 
+      const serverConfig = serverConfigs?.[client.name];
+
+      // Expand environment variables in arguments if configured
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const expandedArgs = expandEnvVars(toolArgs as JsonObject, serverConfig?.envVars);
+
       // Call the actual tool on the target server
       const result = await client.client.request(
         {
           method: 'tools/call',
           params: {
             name: tool,
-            arguments: toolArgs,
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+            arguments: expandedArgs as Record<string, unknown>,
             _meta: {
               progressToken: meta?.progressToken,
             },
@@ -262,7 +273,9 @@ For example, to use the Edit tool from claude_code, your request would look like
 
       logCustomToolResponse(result);
 
-      return result;
+      // Unexpand environment variables in response if configured
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return unexpandEnvVars(result as JsonObject, serverConfig?.envVars) as typeof result;
     } catch (error) {
       logCustomToolError(customToolName, error);
       console.error(`Error calling ${customToolName} subtool ${server}/${tool}:`, error);
