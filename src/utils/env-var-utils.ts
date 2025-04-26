@@ -1,8 +1,37 @@
-import { EnvVarConfig } from '../models/config.js';
+import { EnvVarConfig } from '../config';
 
 type JsonValue = string | number | boolean | null | undefined | JsonObject | JsonArray;
 type JsonObject = { [key: string]: JsonValue };
 type JsonArray = JsonValue[];
+
+/**
+ * Combines global and server-specific environment variables
+ * Server-specific variables take precedence over global variables with the same name
+ */
+export function combineEnvVars(
+  globalEnvVars: EnvVarConfig[] | undefined,
+  serverEnvVars: EnvVarConfig[] | undefined
+): EnvVarConfig[] {
+  const combinedEnvVars: EnvVarConfig[] = [];
+
+  // Add global environment variables
+  if (globalEnvVars?.length) {
+    combinedEnvVars.push(...globalEnvVars);
+  }
+
+  // Add server-specific environment variables, which take precedence over global ones
+  if (serverEnvVars?.length) {
+    // For each server-specific var, remove any global var with the same name
+    const serverVarNames = new Set(serverEnvVars.map((v) => v.name));
+    const filteredGlobalVars = combinedEnvVars.filter((v) => !serverVarNames.has(v.name));
+
+    // Replace combinedEnvVars with filtered globals + server vars
+    combinedEnvVars.length = 0;
+    combinedEnvVars.push(...filteredGlobalVars, ...serverEnvVars);
+  }
+
+  return combinedEnvVars;
+}
 
 /**
  * Recursively expands environment variables in an object based on configuration
