@@ -24,6 +24,11 @@
       "url": "http://example.com/mcp"
     }
   },
+  "envVars": [
+    { "name": "GLOBAL_API_KEY", "value": "global-api-key", "expand": true, "unexpand": true },
+    { "name": "GLOBAL_ENV", "value": "production", "expand": true, "unexpand": false },
+    { "name": "DEBUG_MODE", "value": "true", "expand": true, "unexpand": false }
+  ],
   "tools": {
     "new tool": {
       "description": "Start the development server and manage resources",

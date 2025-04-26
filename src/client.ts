@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { ServerTransportConfig } from './config.js';
+import { ServerConfig } from './config.js';
 import { clientMaps } from './mappers/client-maps.js';
 
 const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
@@ -22,7 +22,7 @@ const CONNECTION_RETRY_CONFIG = {
 
 const createClient = (
   serverName: string,
-  config: ServerTransportConfig
+  config: ServerConfig
 ): { client: Client | undefined; transport: Transport | undefined } => {
   let transport: Transport | null = null;
   try {
@@ -82,7 +82,7 @@ const createClient = (
  */
 const connectWithRetry = async (
   serverName: string,
-  config: ServerTransportConfig,
+  config: ServerConfig,
   onConnect: (client: Client, transport: Transport) => Promise<ConnectedClient>
 ): Promise<ConnectedClient | null> => {
   const { waitFor, retries } = CONNECTION_RETRY_CONFIG;
@@ -129,11 +129,11 @@ export const getConnectedClient = (): ConnectedClient[] => {
 };
 
 export const createClients = async (
-  mcpServers: Record<string, ServerTransportConfig>
+  mcpServers: Record<string, ServerConfig>
 ): Promise<ConnectedClient[]> => {
   const connectToServer = async (
     serverName: string,
-    config: ServerTransportConfig
+    config: ServerConfig
   ): Promise<ConnectedClient | null> => {
     console.log(`Connecting to server: ${serverName}`);
 
@@ -173,7 +173,7 @@ export const createClients = async (
  */
 export const restartClient = async (
   serverName: string,
-  config: ServerTransportConfig
+  config: ServerConfig
 ): Promise<ConnectedClient | null> => {
   console.log(`Restarting server: ${serverName}`);
 

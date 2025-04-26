@@ -1,9 +1,9 @@
-import { ServerConfig } from '../models/config.js';
 import { ConnectedClient } from '../client.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { ServerConfigs } from '../config.js';
 
 /**
  * Handles a request to list tools from all connected clients
@@ -20,7 +20,7 @@ export async function handleListToolsRequest(
     };
   },
   connectedClients: ConnectedClient[],
-  serverConfigs: Record<string, ServerConfig>,
+  serverConfigs: ServerConfigs,
   toolsConfig?: {
     mcpServers: Record<string, unknown>;
     tools?: Record<

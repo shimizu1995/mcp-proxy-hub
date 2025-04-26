@@ -7,10 +7,9 @@ import {
   logCustomToolResponse,
   logCustomToolError,
 } from '../utils/debug-utils.js';
-import { ToolConfig } from '../config.js';
-import { expandEnvVars, unexpandEnvVars } from '../utils/env-var-utils.js';
+import { EnvVarConfig, ServerConfig, ToolConfig } from '../config.js';
+import { expandEnvVars, unexpandEnvVars, combineEnvVars } from '../utils/env-var-utils.js';
 import { JsonObject } from '../types/json.js';
-import { ServerConfig } from '../models/config.js';
 
 // Custom client for handling custom tools
 const customClient: ConnectedClient = {
@@ -215,7 +214,8 @@ For example, to use the Edit tool from claude_code, your request would look like
     customToolName: string,
     requestArgs: Record<string, unknown> | undefined,
     meta?: { progressToken?: string | number },
-    serverConfigs?: Record<string, ServerConfig>
+    serverConfigs?: Record<string, ServerConfig>,
+    globalEnvVars?: EnvVarConfig[]
   ) {
     if (!requestArgs) {
       throw new Error('Missing required parameters');
@@ -251,9 +251,12 @@ For example, to use the Edit tool from claude_code, your request would look like
 
       const serverConfig = serverConfigs?.[client.name];
 
+      // Combine global and server-specific environment variables
+      const combinedEnvVars = combineEnvVars(globalEnvVars, serverConfig?.envVars);
+
       // Expand environment variables in arguments if configured
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const expandedArgs = expandEnvVars(toolArgs as JsonObject, serverConfig?.envVars);
+      const expandedArgs = expandEnvVars(toolArgs as JsonObject, combinedEnvVars);
 
       // Call the actual tool on the target server
       const result = await client.client.request(
@@ -275,7 +278,7 @@ For example, to use the Edit tool from claude_code, your request would look like
 
       // Unexpand environment variables in response if configured
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return unexpandEnvVars(result as JsonObject, serverConfig?.envVars) as typeof result;
+      return unexpandEnvVars(result as JsonObject, combinedEnvVars) as typeof result;
     } catch (error) {
       logCustomToolError(customToolName, error);
       console.error(`Error calling ${customToolName} subtool ${server}/${tool}:`, error);

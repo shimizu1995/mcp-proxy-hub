@@ -10,6 +10,13 @@ export type ToolMapping = {
 // Union type for exposedTools entries
 export type ExposedTool = string | ToolMapping;
 
+export type EnvVarConfig = {
+  name: string;
+  value: string;
+  expand?: boolean;
+  unexpand?: boolean;
+};
+
 export type TransportConfigStdio = {
   type?: 'stdio';
   command: string;
@@ -17,18 +24,21 @@ export type TransportConfigStdio = {
   env?: Record<string, string>;
   exposedTools?: ExposedTool[];
   hiddenTools?: string[];
+  envVars?: EnvVarConfig[];
 };
 
 export type TransportConfigSSE = {
   type: 'sse';
   url: string;
+  env?: Record<string, string>;
   exposedTools?: ExposedTool[];
   hiddenTools?: string[];
+  envVars?: EnvVarConfig[];
 };
 
-export type ServerTransportConfig = TransportConfigSSE | TransportConfigStdio;
-
+export type ServerConfig = TransportConfigSSE | TransportConfigStdio;
 export type ServerName = string;
+export type ServerConfigs = Record<ServerName, ServerConfig>;
 
 export type ToolDefinition = {
   name: string;
@@ -46,8 +56,9 @@ export type ToolConfig = {
 };
 
 export interface Config {
-  mcpServers: Record<ServerName, ServerTransportConfig>;
+  mcpServers: ServerConfigs;
   tools?: Record<string, ToolConfig>;
+  envVars?: EnvVarConfig[];
 }
 
 export const loadConfig = async (): Promise<Config> => {

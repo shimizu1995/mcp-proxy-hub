@@ -1,10 +1,10 @@
-import { ServerConfig } from '../models/config.js';
 import { ConnectedClient } from '../client.js';
 import {
   CompatibilityCallToolResultSchema,
   ListToolsResultSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
+import { ServerConfig } from '../config.js';
 
 export class ToolService {
   /**

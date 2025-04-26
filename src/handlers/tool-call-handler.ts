@@ -1,9 +1,9 @@
-import { ServerConfig } from '../models/config.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
-import { expandEnvVars, unexpandEnvVars } from '../utils/env-var-utils.js';
+import { expandEnvVars, unexpandEnvVars, combineEnvVars } from '../utils/env-var-utils.js';
 import { JsonObject } from '../types/json.js';
+import { Config } from '../config.js';
 
 /**
  * Handles tool call requests
@@ -19,7 +19,7 @@ export async function handleToolCall(
     } & { [k: string]: unknown };
     method: 'tools/call';
   },
-  serverConfigs: Record<string, ServerConfig>
+  config: Config
 ) {
   const { name: toolName, arguments: args } = request.params;
 
@@ -36,7 +36,8 @@ export async function handleToolCall(
       toolName,
       args,
       request.params._meta,
-      serverConfigs
+      config.mcpServers,
+      config.envVars
     );
   }
 
@@ -44,16 +45,18 @@ export async function handleToolCall(
   const originalToolName = clientForTool.client.toolMappings?.[toolName];
 
   // Validate tool access based on config
-  const serverConfig = serverConfigs[clientForTool.name];
+  const serverConfig = config.mcpServers[clientForTool.name];
   if (serverConfig) {
     toolService.validateToolAccess(toolName, originalToolName, serverConfig);
   }
 
-  // Expand environment variables in arguments if configured
+  // Combine global and server-specific environment variables
+  const combinedEnvVars = combineEnvVars(config.envVars, serverConfig?.envVars);
 
+  // Expand environment variables in arguments if configured
   const expandedArgs =
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    args != null ? expandEnvVars(args as JsonObject, serverConfig?.envVars) : {};
+    args != null ? expandEnvVars(args as JsonObject, combinedEnvVars) : {};
 
   // Execute the tool call
   const result = await toolService.executeToolCall(
@@ -67,5 +70,5 @@ export async function handleToolCall(
 
   // Unexpand environment variables in response if configured
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  return unexpandEnvVars(result as JsonObject, serverConfig?.envVars) as typeof result;
+  return unexpandEnvVars(result as JsonObject, combinedEnvVars) as typeof result;
 }

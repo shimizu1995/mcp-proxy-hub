@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { expandEnvVars, unexpandEnvVars } from './env-var-utils.js';
-import { EnvVarConfig } from '../models/config.js';
+import { EnvVarConfig } from '../config.js';
 
 describe('env-var-utils', () => {
   const originalEnv = process.env;

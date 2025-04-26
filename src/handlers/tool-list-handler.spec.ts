@@ -6,6 +6,7 @@ import { clientMaps } from '../mappers/client-maps.js';
 import { ConnectedClient } from '../client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { ServerConfigs } from '../config.js';
 
 // Mock dependencies
 vi.mock('../services/tool-service.js', () => ({
@@ -41,7 +42,7 @@ describe('Tool List Handler', () => {
   let mockClient1: ConnectedClient;
   let mockClient2: ConnectedClient;
   let connectedClients: ConnectedClient[];
-  let serverConfigs: Record<string, Record<string, unknown>>;
+  let serverConfigs: ServerConfigs;
 
   beforeEach(() => {
     vi.clearAllMocks();
