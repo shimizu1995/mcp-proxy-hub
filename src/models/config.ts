@@ -1,3 +1,9 @@
+export interface EnvVarConfig {
+  name: string;
+  expand?: boolean;
+  unexpand?: boolean;
+}
+
 export interface ServerConfig {
   command?: string;
   args?: string[];
@@ -6,6 +12,7 @@ export interface ServerConfig {
   url?: string;
   exposedTools?: (string | { original: string; exposed: string })[];
   hiddenTools?: string[];
+  envVars?: EnvVarConfig[];
 }
 
 export interface CustomToolConfig {

@@ -2,6 +2,8 @@ import { ServerConfig } from '../models/config.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
+import { expandEnvVars, unexpandEnvVars } from '../utils/env-var-utils.js';
+import { JsonObject } from '../types/json.js';
 
 /**
  * Handles tool call requests
@@ -42,12 +44,23 @@ export async function handleToolCall(
     toolService.validateToolAccess(toolName, originalToolName, serverConfig);
   }
 
+  // Expand environment variables in arguments if configured
+
+  const expandedArgs =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    args != null ? expandEnvVars(args as JsonObject, serverConfig?.envVars) : {};
+
   // Execute the tool call
-  return await toolService.executeToolCall(
+  const result = await toolService.executeToolCall(
     toolName,
-    args || {},
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    expandedArgs as Record<string, unknown>,
     clientForTool,
     request.params._meta,
     originalToolName
   );
+
+  // Unexpand environment variables in response if configured
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return unexpandEnvVars(result as JsonObject, serverConfig?.envVars) as typeof result;
 }

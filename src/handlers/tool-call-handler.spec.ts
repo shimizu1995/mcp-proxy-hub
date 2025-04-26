@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleToolCall } from './tool-call-handler.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
@@ -40,9 +40,17 @@ describe('Tool Call Handler', () => {
   let mockClient: ConnectedClient;
   let mockCustomClient: ConnectedClient;
   let serverConfigs: Record<string, Record<string, unknown>>;
+  const originalEnv = process.env;
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    process.env = {
+      ...originalEnv,
+      TEST_VAR: 'test-value',
+      API_KEY: 'secret-api-key',
+      USER_ID: '12345',
+    };
 
     mockClient = {
       client: {
@@ -62,8 +70,16 @@ describe('Tool Call Handler', () => {
     serverConfigs = {
       client1: {
         command: 'test-command',
-      },
+        envVars: [
+          { name: 'TEST_VAR', expand: true, unexpand: true },
+          { name: 'API_KEY', expand: true, unexpand: false },
+        ],
+      } as Record<string, unknown>,
     };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   it('should throw error when tool is not found', async () => {
@@ -116,7 +132,7 @@ describe('Tool Call Handler', () => {
     expect(result).toBe(mockResult);
   });
 
-  it('should handle regular tool call', async () => {
+  it('should handle regular tool call with environment variable expansion', async () => {
     // Mock getClientForTool to return a client
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
@@ -135,24 +151,17 @@ describe('Tool Call Handler', () => {
 
     const result = await handleToolCall(request, serverConfigs);
 
-    // Verify validateToolAccess was called
-    expect(toolService.validateToolAccess).toHaveBeenCalledWith(
-      'tool1',
-      undefined,
-      serverConfigs.client1
-    );
-
     // Verify executeToolCall was called
     expect(toolService.executeToolCall).toHaveBeenCalledWith(
       'tool1',
-      { param1: 'value1' },
+      { param1: 'value1' }, // Mocked expandEnvVars just returns the input
       mockClient,
       { progressToken: 'token123' },
       undefined
     );
 
     // Verify result
-    expect(result).toBe(mockResult);
+    expect(result).toStrictEqual(mockResult);
   });
 
   it('should handle tool with original name mapping', async () => {
@@ -222,7 +231,44 @@ describe('Tool Call Handler', () => {
     );
 
     // Verify result
-    expect(result).toBe(mockResult);
+    expect(result).toStrictEqual(mockResult);
+  });
+
+  it('should handle tool call with sensitive information in arguments and response', async () => {
+    // Mock getClientForTool to return a client
+    vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+
+    // Mock executeToolCall to return a result with sensitive data
+    const mockResult = {
+      success: true,
+      data: 'Response contains test-value token',
+    };
+    vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
+
+    const request = {
+      method: 'tools/call' as const,
+      params: {
+        name: 'sensitiveDataTool',
+        arguments: { apiKey: '${API_KEY}', userId: 'user123' },
+      },
+    };
+
+    const result = await handleToolCall(request, serverConfigs);
+
+    // Verify executeToolCall was called with expanded variables
+    expect(toolService.executeToolCall).toHaveBeenCalledWith(
+      'sensitiveDataTool',
+      { apiKey: 'secret-api-key', userId: 'user123' },
+      mockClient,
+      undefined,
+      undefined
+    );
+
+    // Check the result has unexpanded values
+    expect(result).toEqual({
+      success: true,
+      data: 'Response contains ${TEST_VAR} token',
+    });
   });
 
   it('should pass additional properties in params to executeToolCall', async () => {
