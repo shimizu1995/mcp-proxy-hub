@@ -2,7 +2,17 @@
   "mcpServers": {
     "Example Server 1": {
       "command": "/path/to/server1/build/index.js",
-      "exposedTools": ["tool1", { "original": "tool2", "exposed": "renamed_tool2" }]
+      "exposedTools": ["tool1", { "original": "tool2", "exposed": "renamed_tool2" }],
+      "envVars": [
+        { "name": "API_KEY", "value": "my-api-key", "expand": true, "unexpand": true },
+        { "name": "USER_ID", "value": "user123", "expand": true, "unexpand": false },
+        {
+          "name": "CONFIG_PATH",
+          "value": "/path/to/config.json",
+          "expand": false,
+          "unexpand": true
+        }
+      ]
     },
     "Example Server 2": {
       "command": "npx",

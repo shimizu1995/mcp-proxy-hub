@@ -270,7 +270,15 @@ describe('Tool Handlers', () => {
       expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
         'customTool',
         { param: 'value' },
-        { progressToken: 'token123' }
+        { progressToken: 'token123' },
+        {
+          client1: {
+            command: 'test-command',
+          },
+          client2: {
+            command: 'test-command-2',
+          },
+        }
       );
 
       // Verify result
