@@ -284,5 +284,5 @@ npm run dev:sse
 ### 本番実行
 
 ```bash
-MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-server
+MCP_PROXY_CONFIG_PATH=./config.json mcp-proxy-hub
 ```
