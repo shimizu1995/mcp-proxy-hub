@@ -46,6 +46,7 @@ An MCP proxy server that aggregates and serves multiple MCP resource servers thr
 - Automatically replace sensitive values with variable references in responses
 - Configure which variables should be expanded/unexpanded via configuration
 - Each variable can be independently configured for expansion and unexpansion
+- Environment variables are only expanded when using the `${VARIABLE_NAME}` syntax (e.g., `${API_KEY}`). The `$VARIABLE_NAME` syntax is not supported.
 - Secure handling of sensitive information like API keys
 
 ### Prompt Handling
@@ -96,6 +97,7 @@ cp config.example.json config.json
 #### Environment Variables Configuration
 
 - **envVars**:
+
   - Array of environment variable configurations
   - Each configuration has the following properties:
     - `name`: Name of the environment variable
