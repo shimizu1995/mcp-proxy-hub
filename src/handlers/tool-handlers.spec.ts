@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleListToolsRequest, handleToolCall } from './tool-handlers.js';
+import { handleListToolsRequest } from './tool-list-handler.js';
+import { handleToolCall } from './tool-call-handler.js';
 import { toolService } from '../services/tool-service.js';
 import { customToolService } from '../services/custom-tool-service.js';
 import { clientMaps } from '../mappers/client-maps.js';

@@ -1,5 +1,6 @@
 // ハンドラー関数のみをエクスポート
-export { handleToolCall, handleListToolsRequest } from './tool-handlers.js';
+export { handleToolCall } from './tool-call-handler.js';
+export { handleListToolsRequest } from './tool-list-handler.js';
 export {
   handleGetPromptRequest,
   handleListPromptsRequest,
