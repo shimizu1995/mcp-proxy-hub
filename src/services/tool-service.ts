@@ -6,6 +6,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { ServerConfig } from '../config.js';
 import { clientMaps } from '../mappers/client-maps.js';
+import {
+  logServerToolRequest,
+  logServerToolResponse,
+  logServerToolError,
+} from '../utils/debug-utils.js';
 
 export class ToolService {
   /**
@@ -86,19 +91,29 @@ export class ToolService {
       // The name to use when calling the tool (may be different from what the user specified)
       const callName = originalToolName || toolName;
 
-      // Call the tool
-      return await client.client.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: callName,
-            arguments: args,
-            _meta: meta,
-          },
+      // Create request object
+      const request = {
+        method: 'tools/call',
+        params: {
+          name: callName,
+          arguments: args,
+          _meta: meta,
         },
-        CompatibilityCallToolResultSchema
-      );
+      };
+
+      // Log the tool request
+      logServerToolRequest(toolName, client.name, request);
+
+      // Call the tool
+      const result = await client.client.request(request, CompatibilityCallToolResultSchema);
+
+      // Log the tool response
+      logServerToolResponse(toolName, result);
+
+      return result;
     } catch (error) {
+      // Log the tool error
+      logServerToolError(toolName, client.name, error);
       console.error(`Error calling tool ${toolName} on ${client.name}:`, error);
       throw error;
     }

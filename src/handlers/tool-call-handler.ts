@@ -4,7 +4,7 @@ import { customToolService } from '../services/custom-tool-service.js';
 import { expandEnvVars, unexpandEnvVars, combineEnvVars } from '../utils/env-var-utils.js';
 import { JsonObject } from '../types/json.js';
 import { Config } from '../config.js';
-import { isDebugMode, formatForConsole } from '../utils/debug-utils.js';
+import { logUnknownTool } from '../utils/debug-utils.js';
 
 /**
  * Handles tool call requests
@@ -28,16 +28,8 @@ export async function handleToolCall(
   const clientForTool = clientMaps.getClientForTool(toolName);
 
   if (!clientForTool) {
-    // Add debug logging for troubleshooting unknown tools
-    if (isDebugMode()) {
-      console.log('\n' + '!'.repeat(80));
-      console.log(`❌ DEBUG: Unknown tool: ${toolName}`);
-      console.log('-'.repeat(80));
-      console.log('Request params:', formatForConsole(request.params));
-      console.log('-'.repeat(80));
-      console.log('Client maps tool mapping:', formatForConsole(clientMaps));
-      console.log('!'.repeat(80) + '\n');
-    }
+    // Log unknown tool information for debugging
+    logUnknownTool(toolName, request.params, clientMaps);
 
     throw new Error(`Unknown tool: ${toolName}`);
   }
