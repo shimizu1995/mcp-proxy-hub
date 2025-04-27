@@ -5,6 +5,7 @@ import {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ServerConfig } from '../config.js';
+import { clientMaps } from '../mappers/client-maps.js';
 
 export class ToolService {
   /**
@@ -35,7 +36,33 @@ export class ToolService {
 
       const processedTools = toolsResponse.map((tool) => {
         // Add server name prefix to description
-        return this.prefixToolDescription(tool, connectedClient.name);
+        const processedTool = this.prefixToolDescription(tool, connectedClient.name);
+
+        // Map the tool to the client directly using clientMaps
+        clientMaps.mapToolToClient(processedTool.name, connectedClient);
+
+        // Handle tool name mapping from exposedTools if configured
+        if (serverConfig?.exposedTools) {
+          // Find any tool mapping in exposedTools
+          const toolMapping = serverConfig.exposedTools.find(
+            (exposedTool) => typeof exposedTool !== 'string' && exposedTool.original === tool.name
+          );
+
+          if (toolMapping && typeof toolMapping !== 'string') {
+            const exposedName = toolMapping.exposed;
+
+            // Store original to exposed name mapping in client
+            if (!connectedClient.client.toolMappings) {
+              connectedClient.client.toolMappings = {};
+            }
+            connectedClient.client.toolMappings[exposedName] = tool.name;
+
+            // Map the exposed name to the client as well
+            clientMaps.mapToolToClient(exposedName, connectedClient);
+          }
+        }
+
+        return processedTool;
       });
 
       return processedTools;
