@@ -6,7 +6,7 @@
   "description": "An MCP proxy hub that aggregates and serves multiple MCP resource servers through a single interface",
   "type": "module",
   "bin": {
-    "mcp-proxy-hub": "./build/index.js"
+    "mcp-proxy-hub": "build/index.js"
   },
   "files": [
     "build"
@@ -27,8 +27,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
-    "publish": "npm run build && npm publish --access public"
+    "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
