@@ -21,7 +21,7 @@ jobs:
         id: get_version
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          # v1.0.0 形式の場合、v を削除して 1.0.0 にする
+          # remove the 'v' prefix if it exists
           VERSION=${TAG#v}
           echo "Version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -42,6 +42,17 @@ jobs:
 
       - name: Check package.json
         run: cat package.json
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload JS files to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to NPM
         run: npm publish --access public
