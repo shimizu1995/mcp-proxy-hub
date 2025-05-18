@@ -54,18 +54,16 @@ async function main() {
     }
   }
 
-  // Cleanup on exit
-  process.on('SIGINT', async () => {
-    logger.info('SIGINT received, shutting down...');
+  async function exit() {
+    logger.info('Exiting...');
+    setTimeout(() => process.exit(0), 15000);
     await closeAll();
     process.exit(0);
-  });
+  }
 
-  process.on('SIGTERM', async () => {
-    logger.info('SIGTERM received, shutting down...');
-    await closeAll();
-    process.exit(0);
-  });
+  process.stdin.on('close', exit);
+  process.on('SIGINT', exit);
+  process.on('SIGTERM', exit);
 
   setInterval(async () => {
     if (isParentAlive()) {
@@ -73,8 +71,7 @@ async function main() {
     }
 
     logger.info('Parent process is dead, shutting down...');
-    await closeAll();
-    process.exit(0);
+    await exit();
   }, 2000);
 }
 
