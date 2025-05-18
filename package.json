@@ -1,10 +1,9 @@
 {
-  "name": "mcp-proxy-hub",
+  "name": "@naotaka/mcp-proxy-hub",
   "version": "0.1.0",
-  "author": "Adam Wattis",
+  "author": "Naotaka Mizuki",
   "license": "MIT",
   "description": "An MCP proxy hub that aggregates and serves multiple MCP resource servers through a single interface",
-  "private": true,
   "type": "module",
   "bin": {
     "mcp-proxy-hub": "./build/index.js"
@@ -28,7 +27,8 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,json,md}\""
+    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
+    "publish": "npm run build && npm publish --access public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
