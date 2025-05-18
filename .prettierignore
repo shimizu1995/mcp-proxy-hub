@@ -16,6 +16,3 @@ package-lock.json
 
 # Ignore .git directory
 .git/
-
-# Ignore other configuration files
-.github/
