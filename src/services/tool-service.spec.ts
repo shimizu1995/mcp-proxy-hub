@@ -159,8 +159,8 @@ describe('ToolService', () => {
 
       await toolService.fetchToolsFromClient(mockClient, serverConfig);
 
-      // Verify both original and exposed names are mapped
-      expect(mapToolToClientSpy).toHaveBeenCalledWith('originalTool', mockClient);
+      // Verify only exposed name is mapped (not the original name)
+      expect(mapToolToClientSpy).toHaveBeenCalledTimes(1);
       expect(mapToolToClientSpy).toHaveBeenCalledWith('exposedTool', mockClient);
 
       // Verify client toolMappings is updated
@@ -407,6 +407,89 @@ describe('ToolService', () => {
       expect(result.description).toBe('[testClient] Tool description');
       expect(result.name).toBe('tool1'); // Name should remain unchanged
       expect(result.inputSchema).toBe(tool.inputSchema); // Schema should remain unchanged
+    });
+  });
+
+  describe('applyToolNameMapping', () => {
+    const testTools: Tool[] = [
+      { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
+      { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
+      { name: 'tool3', description: 'Tool 3', inputSchema: { type: 'object' } },
+    ];
+
+    it('should return tools unchanged when serverConfig is undefined', () => {
+      const result = toolService.applyToolNameMapping(testTools);
+      expect(result).toEqual(testTools);
+    });
+
+    it('should return tools unchanged when exposedTools is undefined', () => {
+      const serverConfig = {
+        command: 'test',
+      };
+
+      const result = toolService.applyToolNameMapping(testTools, serverConfig);
+      expect(result).toEqual(testTools);
+    });
+
+    it('should return tools unchanged when tools array is empty', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [{ original: 'tool1', exposed: 'renamedTool1' }],
+      };
+
+      const result = toolService.applyToolNameMapping([], serverConfig);
+      expect(result).toEqual([]);
+    });
+
+    it('should apply name mapping when tool has mapping configuration', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [
+          { original: 'tool1', exposed: 'renamedTool1' },
+          'tool2', // no mapping
+          { original: 'tool3', exposed: 'renamedTool3' },
+        ],
+      };
+
+      const result = toolService.applyToolNameMapping(testTools, serverConfig);
+
+      expect(result).toHaveLength(3);
+      expect(result[0].name).toBe('renamedTool1');
+      expect(result[0].description).toBe('Tool 1'); // Description unchanged
+      expect(result[1].name).toBe('tool2'); // No mapping, unchanged
+      expect(result[2].name).toBe('renamedTool3');
+    });
+
+    it('should not apply mapping when tool is not in exposedTools', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [{ original: 'otherTool', exposed: 'renamedOtherTool' }, 'tool2'],
+      };
+
+      const result = toolService.applyToolNameMapping(testTools, serverConfig);
+
+      expect(result).toHaveLength(3);
+      expect(result[0].name).toBe('tool1'); // No mapping found, unchanged
+      expect(result[1].name).toBe('tool2'); // No mapping, unchanged
+      expect(result[2].name).toBe('tool3'); // No mapping found, unchanged
+    });
+
+    it('should handle mixed exposedTools with strings and objects', () => {
+      const serverConfig = {
+        command: 'test',
+        exposedTools: [
+          'tool1', // string format, no mapping
+          { original: 'tool2', exposed: 'renamedTool2' }, // object format, with mapping
+          'tool3', // string format, no mapping
+        ],
+      };
+
+      const result = toolService.applyToolNameMapping(testTools, serverConfig);
+
+      expect(result).toHaveLength(3);
+      expect(result[0].name).toBe('tool1'); // String format, no mapping
+      expect(result[1].name).toBe('renamedTool2'); // Object format, mapped
+      expect(result[2].name).toBe('tool3'); // String format, no mapping
     });
   });
 

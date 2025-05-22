@@ -16,6 +16,7 @@ vi.mock('../services/tool-service.js', () => ({
     validateToolAccess: vi.fn(),
     executeToolCall: vi.fn(),
     filterTools: vi.fn(),
+    applyToolNameMapping: vi.fn(),
     processToolName: vi.fn(),
     prefixToolDescription: vi.fn(),
     isToolAllowed: vi.fn(),
@@ -98,6 +99,8 @@ describe('Tool Handlers', () => {
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
       vi.mocked(toolService.filterTools).mockReturnValueOnce(client1Tools);
       vi.mocked(toolService.filterTools).mockReturnValueOnce(client2Tools);
+      vi.mocked(toolService.applyToolNameMapping).mockReturnValueOnce(client1Tools);
+      vi.mocked(toolService.applyToolNameMapping).mockReturnValueOnce(client2Tools);
       vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
 
       const request = {
@@ -144,6 +147,7 @@ describe('Tool Handlers', () => {
       ];
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
       vi.mocked(toolService.filterTools).mockReturnValueOnce(client2Tools);
+      vi.mocked(toolService.applyToolNameMapping).mockReturnValueOnce(client2Tools);
       vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
 
       const request = {
@@ -177,6 +181,7 @@ describe('Tool Handlers', () => {
 
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue(clientTools);
       vi.mocked(toolService.filterTools).mockReturnValue(clientTools);
+      vi.mocked(toolService.applyToolNameMapping).mockReturnValue(clientTools);
       vi.mocked(customToolService.createCustomTools).mockReturnValueOnce(customTools);
 
       const request = {
@@ -202,6 +207,7 @@ describe('Tool Handlers', () => {
 
       vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue(clientTools);
       vi.mocked(toolService.filterTools).mockReturnValue(clientTools);
+      vi.mocked(toolService.applyToolNameMapping).mockReturnValue(clientTools);
       vi.mocked(customToolService.createCustomTools).mockImplementationOnce(() => {
         throw new Error('Custom tool error');
       });
