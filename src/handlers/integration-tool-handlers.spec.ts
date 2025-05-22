@@ -16,6 +16,7 @@ vi.mock('../services/tool-service.js', () => ({
     validateToolAccess: vi.fn(),
     executeToolCall: vi.fn(),
     filterTools: vi.fn(),
+    applyToolNameMapping: vi.fn(),
     processToolName: vi.fn(),
     prefixToolDescription: vi.fn(),
     isToolAllowed: vi.fn(),
@@ -121,6 +122,9 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     // Mock filterTools to return the tools directly
     vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
 
+    // Mock applyToolNameMapping to return the tools directly
+    vi.mocked(toolService.applyToolNameMapping).mockImplementation((tools) => tools as Tool[]);
+
     // Custom tools will be empty for this test
     vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
 
@@ -205,6 +209,7 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     // No regular tools for this test
     vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue([]);
     vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
+    vi.mocked(toolService.applyToolNameMapping).mockImplementation((tools) => tools as Tool[]);
 
     // Mock custom tool creation
     vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([customTool]);
@@ -316,13 +321,21 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
       return toolName;
     });
 
-    // Mock filterTools to return processed tools
-    vi.mocked(toolService.filterTools).mockImplementation((tools) => {
-      if (!tools) return [];
-      return tools.map((tool) => ({
-        ...tool,
-        name: tool.name === 'originalTool' ? 'renamedTool' : tool.name,
-      })) as Tool[];
+    // Mock filterTools to return the tools as-is (filtering is done separately)
+    vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
+
+    // Mock applyToolNameMapping to handle the actual renaming
+    vi.mocked(toolService.applyToolNameMapping).mockImplementation((tools, serverConfig) => {
+      if (!tools || !serverConfig?.exposedTools) return tools as Tool[];
+      return tools.map((tool) => {
+        const mapping = serverConfig.exposedTools?.find(
+          (m) => typeof m !== 'string' && m.original === tool.name
+        );
+        if (mapping && typeof mapping !== 'string') {
+          return { ...tool, name: mapping.exposed };
+        }
+        return tool;
+      }) as Tool[];
     });
 
     // No custom tools for this test

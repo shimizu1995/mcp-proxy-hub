@@ -60,8 +60,9 @@ export async function handleListToolsRequest(
       );
 
       const filteredTools = toolService.filterTools(clientAllTools, serverConfig);
+      const mappedTools = toolService.applyToolNameMapping(filteredTools, serverConfig);
 
-      exposedTools.push(...filteredTools);
+      exposedTools.push(...mappedTools);
 
       if (clientAllTools.length > 0) {
         allTools.push(
