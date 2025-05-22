@@ -43,10 +43,8 @@ export class ToolService {
         // Add server name prefix to description
         const processedTool = this.prefixToolDescription(tool, connectedClient.name);
 
-        // Map the tool to the client directly using clientMaps
-        clientMaps.mapToolToClient(processedTool.name, connectedClient);
-
         // Handle tool name mapping from exposedTools if configured
+        let hasExposedMapping = false;
         if (serverConfig?.exposedTools) {
           // Find any tool mapping in exposedTools
           const toolMapping = serverConfig.exposedTools.find(
@@ -55,6 +53,7 @@ export class ToolService {
 
           if (toolMapping && typeof toolMapping !== 'string') {
             const exposedName = toolMapping.exposed;
+            hasExposedMapping = true;
 
             // Store original to exposed name mapping in client
             if (!connectedClient.client.toolMappings) {
@@ -62,9 +61,14 @@ export class ToolService {
             }
             connectedClient.client.toolMappings[exposedName] = tool.name;
 
-            // Map the exposed name to the client as well
+            // Map only the exposed name to the client
             clientMaps.mapToolToClient(exposedName, connectedClient);
           }
+        }
+
+        // If no exposed mapping exists, map the original tool name to the client
+        if (!hasExposedMapping) {
+          clientMaps.mapToolToClient(processedTool.name, connectedClient);
         }
 
         return processedTool;
@@ -199,6 +203,33 @@ export class ToolService {
       ...tool,
       description: `[${clientName}] ${tool.description}`,
     };
+  }
+
+  /**
+   * Apply tool name mapping based on server configuration
+   */
+  applyToolNameMapping(tools: Tool[], serverConfig?: ServerConfig): Tool[] {
+    if (!tools || !serverConfig?.exposedTools) {
+      return tools;
+    }
+
+    return tools.map((tool) => {
+      // Find if this tool has a name mapping
+      const toolMapping = serverConfig.exposedTools?.find(
+        (exposedTool) => typeof exposedTool !== 'string' && exposedTool.original === tool.name
+      );
+
+      // If mapping exists, return tool with exposed name
+      if (toolMapping && typeof toolMapping !== 'string') {
+        return {
+          ...tool,
+          name: toolMapping.exposed,
+        };
+      }
+
+      // Otherwise return tool as-is
+      return tool;
+    });
   }
 
   /**

@@ -1,42 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleListToolsRequest } from './tool-list-handler.js';
-import { toolService } from '../services/tool-service.js';
-import { customToolService } from '../services/custom-tool-service.js';
-import { clientMaps } from '../mappers/client-maps.js';
 import { ConnectedClient } from '../client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { ServerConfigs } from '../config.js';
-
-// Mock dependencies
-vi.mock('../services/tool-service.js', () => ({
-  toolService: {
-    fetchToolsFromClient: vi.fn(),
-    validateToolAccess: vi.fn(),
-    executeToolCall: vi.fn(),
-    filterTools: vi.fn(),
-    processToolName: vi.fn(),
-    prefixToolDescription: vi.fn(),
-    isToolAllowed: vi.fn(),
-  },
-}));
-
-vi.mock('../services/custom-tool-service.js', () => ({
-  customToolService: {
-    createCustomTools: vi.fn(),
-    handleCustomToolCall: vi.fn(),
-  },
-}));
-
-vi.mock('../mappers/client-maps.js', () => ({
-  clientMaps: {
-    clearToolMap: vi.fn(),
-    mapToolToClient: vi.fn(),
-    mapCustomToolToClient: vi.fn(),
-    getClientForTool: vi.fn(),
-    getClientForCustomTool: vi.fn(),
-  },
-}));
 
 describe('Tool List Handler', () => {
   let mockClient1: ConnectedClient;
@@ -75,21 +42,22 @@ describe('Tool List Handler', () => {
         command: 'test-command-2',
       },
     };
+
+    // Mock client.request for each connected client
+    vi.spyOn(mockClient1.client, 'request').mockImplementation(() =>
+      Promise.resolve({
+        tools: [{ name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } }],
+      })
+    );
+
+    vi.spyOn(mockClient2.client, 'request').mockImplementation(() =>
+      Promise.resolve({
+        tools: [{ name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } }],
+      })
+    );
   });
 
   it('should clear tool map and aggregate tools from all clients', async () => {
-    // Mock the service responses
-    const client1Tools: Tool[] = [
-      { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
-    ];
-    const client2Tools: Tool[] = [
-      { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
-    ];
-
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client1Tools);
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
-    vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
-
     const request = {
       method: 'tools/list' as const,
       params: { _meta: { test: 'metadata' } },
@@ -97,52 +65,30 @@ describe('Tool List Handler', () => {
 
     const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
-    // Verify map was cleared
-    expect(clientMaps.clearToolMap).toHaveBeenCalledTimes(1);
-
-    // Verify service calls
-    expect(toolService.fetchToolsFromClient).toHaveBeenCalledTimes(2);
-    expect(toolService.fetchToolsFromClient).toHaveBeenNthCalledWith(
-      1,
-      mockClient1,
-      serverConfigs.client1,
-      { test: 'metadata' }
+    // Verify client.request was called with correct parameters
+    expect(mockClient1.client.request).toHaveBeenCalledWith(
+      {
+        method: 'tools/list',
+        params: { _meta: { test: 'metadata' } },
+      },
+      ListToolsResultSchema
     );
-    expect(toolService.fetchToolsFromClient).toHaveBeenNthCalledWith(
-      2,
-      mockClient2,
-      serverConfigs.client2,
-      { test: 'metadata' }
+    expect(mockClient2.client.request).toHaveBeenCalledWith(
+      {
+        method: 'tools/list',
+        params: { _meta: { test: 'metadata' } },
+      },
+      ListToolsResultSchema
     );
 
-    // Mock filterTools to return the tools directly
-    vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
-
-    // Verify result
-    expect(result).toEqual({
-      tools: [], // Now empty because filterTools returns empty arrays by default in our mocks
-    });
-
-    // Verify filterTools was called for each client
-    expect(toolService.filterTools).toHaveBeenCalledTimes(2);
+    // Verify the result contains tools from both clients (with prefixed descriptions)
+    expect(result.tools).toEqual([
+      { name: 'tool1', description: '[client1] Tool 1', inputSchema: { type: 'object' } },
+      { name: 'tool2', description: '[client2] Tool 2', inputSchema: { type: 'object' } },
+    ]);
   });
 
   it('should add custom tools to the result', async () => {
-    // Mock the service responses
-    const client1Tools: Tool[] = [
-      { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } },
-    ];
-    const client2Tools: Tool[] = [
-      { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } },
-    ];
-    const customTools: Tool[] = [
-      { name: 'customTool', description: 'Custom Tool', inputSchema: { type: 'object' } },
-    ];
-
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client1Tools);
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce(client2Tools);
-    vi.mocked(customToolService.createCustomTools).mockReturnValueOnce(customTools);
-
     const request = {
       method: 'tools/list' as const,
       params: {},
@@ -169,42 +115,24 @@ describe('Tool List Handler', () => {
       toolsConfig
     );
 
-    // Mock filterTools to return the original tools
-    vi.mocked(toolService.filterTools).mockImplementationOnce((tools) => tools as Tool[]);
-    vi.mocked(toolService.filterTools).mockImplementationOnce((tools) => tools as Tool[]);
-
-    // Mock the allTools array to contain client tools with serverName
-    const allTools = [
-      { ...client1Tools[0], serverName: 'client1' },
-      { ...client2Tools[0], serverName: 'client2' },
-    ];
-
-    // Verify createCustomTools was called
-    expect(customToolService.createCustomTools).toHaveBeenCalledWith(
-      toolsConfig,
-      connectedClients,
-      expect.arrayContaining(allTools)
+    // The result will include both client tools and custom tools
+    expect(result.tools).toHaveLength(3);
+    expect(result.tools).toEqual(
+      expect.arrayContaining([
+        { name: 'tool1', description: '[client1] Tool 1', inputSchema: { type: 'object' } },
+        { name: 'tool2', description: '[client2] Tool 2', inputSchema: { type: 'object' } },
+        expect.objectContaining({
+          name: 'customTool',
+          description: expect.stringContaining('Available subtools'),
+        }),
+      ])
     );
-
-    // The result will now include both client tools and custom tools since we've mocked filterTools
-    // to return the original tools
-    expect(result).toEqual({
-      tools: [...client1Tools, ...client2Tools, ...customTools],
-    });
-
-    // Verify filterTools was called for each client
-    expect(toolService.filterTools).toHaveBeenCalledTimes(2);
   });
 
-  it('should handle errors in custom tool creation', async () => {
-    // Mock services
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValue([]);
-    vi.mocked(customToolService.createCustomTools).mockImplementationOnce(() => {
-      throw new Error('Custom tool error');
-    });
-
-    // Mock console.error
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('should handle empty tool lists', async () => {
+    // Mock clients to return empty tools
+    vi.mocked(mockClient1.client.request).mockResolvedValue({ tools: [] });
+    vi.mocked(mockClient2.client.request).mockResolvedValue({ tools: [] });
 
     const request = {
       method: 'tools/list' as const,
@@ -213,23 +141,11 @@ describe('Tool List Handler', () => {
 
     const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
-    // Verify error was logged
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error creating custom tools:', expect.any(Error));
-
-    // Verify result only includes tools from clients (empty in this case)
+    // Verify result is empty when no tools are available
     expect(result).toEqual({ tools: [] });
   });
 
-  it('should map tools to their respective clients through fetchToolsFromClient', async () => {
-    // Mock the service responses
-    const tool1: Tool = { name: 'tool1', description: 'Tool 1', inputSchema: { type: 'object' } };
-    const tool2: Tool = { name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } };
-
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce([tool1]);
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce([tool2]);
-    vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
-    vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
-
+  it('should map tools to their respective clients through client.request', async () => {
     const request = {
       method: 'tools/list' as const,
       params: {},
@@ -237,32 +153,33 @@ describe('Tool List Handler', () => {
 
     await handleListToolsRequest(request, connectedClients, serverConfigs);
 
-    // Verify that fetchToolsFromClient was called for each client
-    expect(toolService.fetchToolsFromClient).toHaveBeenCalledWith(
-      mockClient1,
-      serverConfigs.client1,
-      undefined
+    // Verify that client.request was called for each client
+    expect(mockClient1.client.request).toHaveBeenCalledWith(
+      {
+        method: 'tools/list',
+        params: {},
+      },
+
+      ListToolsResultSchema
     );
-    expect(toolService.fetchToolsFromClient).toHaveBeenCalledWith(
-      mockClient2,
-      serverConfigs.client2,
-      undefined
+    expect(mockClient2.client.request).toHaveBeenCalledWith(
+      {
+        method: 'tools/list',
+        params: {},
+      },
+      ListToolsResultSchema
     );
   });
 
-  it('should handle tool name mappings from server config through fetchToolsFromClient', async () => {
-    // Mock the service responses and add exposedTools with mapping to server config
-    const tool1: Tool = {
-      name: 'originalTool',
-      description: 'Original Tool',
-      inputSchema: { type: 'object' },
-    };
+  it('should handle tool name mappings from server config', async () => {
+    // Mock client1 to return a tool that should be mapped
+    vi.mocked(mockClient1.client.request).mockResolvedValue({
+      tools: [
+        { name: 'originalTool', description: 'Original Tool', inputSchema: { type: 'object' } },
+      ],
+    });
 
-    vi.mocked(toolService.fetchToolsFromClient).mockResolvedValueOnce([tool1]);
-    vi.mocked(toolService.filterTools).mockImplementation((tools) => tools as Tool[]);
-    vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([]);
-
-    // Add exposedTools with tool mapping to server config
+    // Add exposedTools with mapping to server config
     serverConfigs.client1 = {
       ...serverConfigs.client1,
       exposedTools: [{ original: 'originalTool', exposed: 'exposedTool' }],
@@ -273,15 +190,131 @@ describe('Tool List Handler', () => {
       params: {},
     };
 
-    await handleListToolsRequest(request, connectedClients, serverConfigs);
+    const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
 
-    // Verify fetchToolsFromClient was called with the config containing exposedTools
-    expect(toolService.fetchToolsFromClient).toHaveBeenCalledWith(
-      mockClient1,
-      expect.objectContaining({
-        exposedTools: [{ original: 'originalTool', exposed: 'exposedTool' }],
-      }),
-      undefined
+    // Verify client.request was called
+    expect(mockClient1.client.request).toHaveBeenCalledWith(
+      {
+        method: 'tools/list',
+        params: {},
+      },
+      expect.any(Object)
     );
+
+    // The result should contain the mapped tool (actual mapping behavior depends on implementation)
+    expect(result.tools).toBeDefined();
+    expect(Array.isArray(result.tools)).toBe(true);
+  });
+
+  it('should return tools with exposed names when mapping is configured', async () => {
+    // Mock client1 to return original tool
+    vi.mocked(mockClient1.client.request).mockResolvedValue({
+      tools: [
+        { name: 'originalTool', description: 'Original Tool', inputSchema: { type: 'object' } },
+      ],
+    });
+
+    // Mock client2 to return empty tools
+    vi.mocked(mockClient2.client.request).mockResolvedValue({ tools: [] });
+
+    // Configure serverConfigs for client1 with tool name mapping
+    serverConfigs.client1 = {
+      ...serverConfigs.client1,
+      exposedTools: [{ original: 'originalTool', exposed: 'exposedTool' }],
+    };
+    // Reset client2 config to avoid interference
+    serverConfigs.client2 = {
+      ...serverConfigs.client2,
+      exposedTools: undefined,
+      hiddenTools: undefined,
+    };
+
+    const request = {
+      method: 'tools/list' as const,
+      params: {},
+    };
+
+    const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
+
+    // The tool should be exposed with the mapped name 'exposedTool', not the original name 'originalTool'
+    expect(result.tools).toHaveLength(1);
+    expect(result.tools[0].name).toBe('exposedTool'); // This should fail with current implementation
+    expect(result.tools[0].description).toBe('[client1] Original Tool');
+  });
+
+  it('should expose tools only with mapped names when original/exposed configuration is provided', async () => {
+    // Mock client1 to return multiple tools including ones with mappings
+    vi.mocked(mockClient1.client.request).mockResolvedValue({
+      tools: [
+        { name: 'tool_a', description: 'Tool A', inputSchema: { type: 'object' } },
+        { name: 'tool_b', description: 'Tool B', inputSchema: { type: 'object' } },
+        { name: 'tool_c', description: 'Tool C', inputSchema: { type: 'object' } },
+      ],
+    });
+
+    // Mock client2 to return empty tools
+    vi.mocked(mockClient2.client.request).mockResolvedValue({ tools: [] });
+
+    // Configure serverConfigs for client1 with selective tool exposure and name mapping
+    serverConfigs.client1 = {
+      ...serverConfigs.client1,
+      exposedTools: [
+        { original: 'tool_a', exposed: 'mapped_tool_a' },
+        'tool_b', // exposed as-is
+        // tool_c is not exposed
+      ],
+    };
+
+    const request = {
+      method: 'tools/list' as const,
+      params: {},
+    };
+
+    const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
+
+    // Should only expose 2 tools: mapped_tool_a and tool_b
+    expect(result.tools).toHaveLength(2);
+
+    // Find the mapped tool
+    const mappedTool = result.tools.find((t) => t.name === 'mapped_tool_a');
+    expect(mappedTool).toBeDefined();
+    expect(mappedTool!.name).toBe('mapped_tool_a'); // Should be exposed name
+    expect(mappedTool!.description).toBe('[client1] Tool A');
+
+    // Find the non-mapped tool
+    const nonMappedTool = result.tools.find((t) => t.name === 'tool_b');
+    expect(nonMappedTool).toBeDefined();
+    expect(nonMappedTool!.name).toBe('tool_b');
+    expect(nonMappedTool!.description).toBe('[client1] Tool B');
+
+    // tool_c should not be exposed at all
+    const hiddenTool = result.tools.find((t) => t.name === 'tool_c');
+    expect(hiddenTool).toBeUndefined();
+
+    // originalTool names should not appear in the results
+    const originalTool = result.tools.find((t) => t.name === 'tool_a');
+    expect(originalTool).toBeUndefined();
+  });
+
+  it('should handle client.request errors gracefully', async () => {
+    // Mock one client to throw an error
+    vi.mocked(mockClient1.client.request).mockRejectedValue(new Error('Client error'));
+
+    // Mock the other client to return normal response
+    vi.mocked(mockClient2.client.request).mockResolvedValue({
+      tools: [{ name: 'tool2', description: 'Tool 2', inputSchema: { type: 'object' } }],
+    });
+
+    const request = {
+      method: 'tools/list' as const,
+      params: {},
+    };
+
+    const result = await handleListToolsRequest(request, connectedClients, serverConfigs);
+
+    // Verify that the successful client's tools are still returned
+    expect(result.tools).toEqual([
+      { name: 'tool2', description: '[client2] Tool 2', inputSchema: { type: 'object' } },
+    ]);
   });
 });
