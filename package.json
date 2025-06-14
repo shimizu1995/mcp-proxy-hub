@@ -1,12 +1,13 @@
 {
   "name": "@naotaka/mcp-proxy-hub",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "author": "Naotaka Mizuki",
   "license": "MIT",
   "description": "An MCP proxy hub that aggregates and serves multiple MCP resource servers through a single interface",
   "type": "module",
   "bin": {
-    "mcp-proxy-hub": "build/index.js"
+    "mcp-proxy-hub": "build/index.js",
+    "mcp-proxy-hub-sse": "build/sse.js"
   },
   "files": [
     "build"
