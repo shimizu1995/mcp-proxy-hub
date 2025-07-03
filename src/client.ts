@@ -4,6 +4,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { ServerConfig } from './config.js';
 import { clientMaps } from './mappers/client-maps.js';
+import { FetchLike } from 'eventsource';
 
 const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
 export interface ConnectedClient {
@@ -27,7 +28,22 @@ const createClient = (
   let transport: Transport | null = null;
   try {
     if (config.type === 'sse') {
-      transport = new SSEClientTransport(new URL(config.url));
+      const customFetch: FetchLike = (url: string | URL, init?: RequestInit) => {
+        // Custom fetch implementation to handle headers and other options
+        const headers = new Headers(init?.headers);
+        if (config.headers) {
+          Object.entries(config.headers).forEach(([key, value]) => {
+            headers.set(key, value);
+          });
+        }
+        return fetch(url, {
+          ...init,
+          headers: Object.fromEntries(headers.entries()),
+        });
+      };
+      transport = new SSEClientTransport(new URL(config.url), {
+        eventSourceInit: { fetch: customFetch },
+      });
     } else {
       console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
       console.debug(`cwd is ${process.cwd()}`);

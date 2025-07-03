@@ -30,6 +30,7 @@ export type TransportConfigStdio = {
 export type TransportConfigSSE = {
   type: 'sse';
   url: string;
+  headers?: Record<string, string>;
   env?: Record<string, string>;
   exposedTools?: ExposedTool[];
   hiddenTools?: string[];
