@@ -21,7 +21,11 @@
     },
     "Example Server 3": {
       "type": "sse",
-      "url": "http://example.com/mcp"
+      "url": "http://example.com/sse",
+      "headers": {
+        "Authorization": "Bearer <token>",
+        "X-Custom-Header": "value"
+      }
     }
   },
   "envVars": [
