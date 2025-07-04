@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import readline from 'readline';
+import fs from 'fs/promises';
+import path from 'path';
 import { loadConfig, Config } from './config.js';
 import { handleToolCall, handleListToolsRequest } from './handlers/index.js';
 import { CallToolRequest, ListToolsRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -17,7 +19,6 @@ async function handleListCommand(config: Config) {
   const request: ListToolsRequest = {
     method: 'tools/list',
   };
-  console.log('Sending request:', JSON.stringify(request, null, 2));
   const connectedClients = getConnectedClient();
   const result = await handleListToolsRequest(request, connectedClients, config.mcpServers || {}, {
     mcpServers: config.mcpServers || {},
@@ -52,14 +53,31 @@ async function handleCallCommand(rest: string[], config: Config) {
       arguments: args,
     },
   };
-  console.log('Sending request:', JSON.stringify(request, null, 2));
   const result = await handleToolCall(request, config);
-  console.log(JSON.stringify(result, null, 2));
+  if (result.content && Array.isArray(result.content)) {
+    for (const item of result.content) {
+      if (item.type === 'text') {
+        console.log(item.text);
+      } else {
+        const outputDir = path.join(process.cwd(), 'output');
+        await fs.mkdir(outputDir, { recursive: true });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const extension = 'json';
+        const filePath = path.join(outputDir, `${toolName}-${timestamp}.${extension}`);
+        await fs.writeFile(filePath, JSON.stringify(item, null, 2));
+        console.log(`Content saved to ${filePath}`);
+      }
+    }
+  } else {
+    console.log(JSON.stringify(result, null, 2));
+  }
 }
 
 async function main() {
   const config = await loadConfig();
   await createClients(config.mcpServers);
+
+  await handleListCommand(config);
 
   const rl = readline.createInterface({
     input: process.stdin,
