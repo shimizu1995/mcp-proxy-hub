@@ -56,12 +56,12 @@ async function handleCallCommand(
     },
   };
   const result = await handleToolCall(request, config);
+  let outputContent = '';
   if (result.content && Array.isArray(result.content)) {
     for (const item of result.content) {
       if (item.type === 'text') {
         if (options.outputFile) {
-          await fs.writeFile(options.outputFile, item.text);
-          console.log(`Content saved to ${options.outputFile}`);
+          outputContent += item.text + '\n';
         } else {
           console.log(item.text);
         }
@@ -77,6 +77,11 @@ async function handleCallCommand(
     }
   } else {
     console.log(JSON.stringify(result, null, 2));
+  }
+
+  if (options.outputFile) {
+    await fs.writeFile(options.outputFile, outputContent);
+    console.log(`Content saved to ${options.outputFile}`);
   }
 }
 
