@@ -33,6 +33,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.12.3",
     "@types/cors": "2.8.19",
+    "commander": "14.0.0",
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "eventsource": "4.0.0",

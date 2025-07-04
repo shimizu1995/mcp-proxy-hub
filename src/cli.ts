@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import inquirer from 'inquirer';
 import commandPrompt from 'inquirer-command-prompt';
+import { Command } from 'commander';
 import { loadConfig, Config } from './config.js';
 import { handleToolCall, handleListToolsRequest } from './handlers/index.js';
 import { CallToolRequest, ListToolsRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -86,68 +87,101 @@ async function handleCallCommand(
 }
 
 async function main() {
-  const config = await loadConfig();
-  await createClients(config.mcpServers);
+  const program = new Command();
+  program.name('mcp-proxy-hub').description('A CLI for interacting with the MCP Proxy Hub');
 
-  await handleListCommand(config);
+  program
+    .command('list')
+    .description('List available tools')
+    .action(async () => {
+      const config = await loadConfig();
+      await createClients(config.mcpServers);
+      await handleListCommand(config);
+      process.exit(0);
+    });
 
-  let isEnd = false;
-  while (!isEnd) {
-    try {
-      const { command } = await inquirer.prompt({
-        // @ts-expect-error registered command prompt type
-        type: 'command',
-        name: 'command',
-        message: 'mcp-proxy-hub> ',
-      });
+  program
+    .command('call')
+    .description('Call a tool with specified arguments')
+    .argument('<toolName>', 'The name of the tool to call')
+    .argument('[args...]', 'Arguments for the tool in key=value format')
+    .option('-o, --output-file <file>', 'Save output to a file')
+    .action(async (toolName, args, options) => {
+      const config = await loadConfig();
+      await createClients(config.mcpServers);
+      await handleListCommand(config);
+      await handleCallCommand(toolName, args, options, config);
+      process.exit(0);
+    });
 
-      const parts = command.trim().split(/\s+/);
-      const commandName = parts[0].toLowerCase();
+  if (process.argv.slice(2).length > 0) {
+    program.parse(process.argv);
+  } else {
+    // Interactive mode
+    const config = await loadConfig();
+    await createClients(config.mcpServers);
+    await handleListCommand(config);
 
-      if (!commandName) {
-        continue;
-      }
+    let isEnd = false;
+    while (!isEnd) {
+      try {
+        const { command } = await inquirer.prompt({
+          // @ts-expect-error registered command prompt type
+          type: 'command',
+          name: 'command',
+          message: 'mcp-proxy-hub> ',
+        });
 
-      switch (commandName) {
-        case 'list': {
-          await handleListCommand(config);
-          break;
+        const parts = command.trim().split(/\s+/);
+        const commandName = parts[0].toLowerCase();
+
+        if (!commandName) {
+          continue;
         }
-        case 'call': {
-          const [, toolName, ...rest] = parts;
-          if (!toolName) {
-            console.log('Please enter a tool name for "call" command.');
-            continue;
+
+        switch (commandName) {
+          case 'list': {
+            await handleListCommand(config);
+            break;
           }
-          const args: string[] = [];
-          let outputFile: string | undefined;
-          for (let i = 0; i < rest.length; i++) {
-            if (rest[i] === '-o' || rest[i] === '--output-file') {
-              if (i + 1 < rest.length) {
-                outputFile = rest[i + 1];
-                i++;
-              } else {
-                console.log('Error: Missing file path for --output-file');
-              }
-            } else {
-              args.push(rest[i]);
+          case 'call': {
+            const [, toolName, ...rest] = parts;
+            if (!toolName) {
+              console.log('Please enter a tool name for "call" command.');
+              continue;
             }
+            const args: string[] = [];
+            let outputFile: string | undefined;
+            for (let i = 0; i < rest.length; i++) {
+              if (rest[i] === '-o' || rest[i] === '--output-file') {
+                if (i + 1 < rest.length) {
+                  outputFile = rest[i + 1];
+                  i++;
+                } else {
+                  console.log('Error: Missing file path for --output-file');
+                }
+              } else {
+                args.push(rest[i]);
+              }
+            }
+            await handleCallCommand(toolName, args, { outputFile }, config);
+            break;
           }
-          await handleCallCommand(toolName, args, { outputFile }, config);
-          break;
+          case 'exit': {
+            isEnd = true;
+            break;
+          }
+          default:
+            console.log(
+              'Unknown command. Available commands: call <toolName> [args...], list, exit'
+            );
         }
-        case 'exit': {
-          isEnd = true;
-          break;
-        }
-        default:
-          console.log('Unknown command. Available commands: call <toolName> [args...], list, exit');
+      } catch (error) {
+        logger.error('Error:', error);
       }
-    } catch (error) {
-      logger.error('Error:', error);
     }
+    process.exit(0);
   }
-  process.exit(0);
 }
 
 main().catch((error) => {
