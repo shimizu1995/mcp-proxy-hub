@@ -175,6 +175,50 @@ npm run dev
 npm run dev:sse
 ```
 
+## CLI
+
+The CLI provides two modes of operation for interacting with the MCP Proxy Hub.
+
+### Direct Execution Mode
+
+You can execute commands directly from your terminal. This is useful for scripting and automation.
+
+- **List available tools**:
+
+  ```bash
+  mcp-proxy-hub-cli list
+  ```
+
+- **Call a tool**:
+
+  ```bash
+  mcp-proxy-hub-cli call <toolName> [args...]
+  ```
+
+  - `toolName`: The name of the tool to call.
+  - `args`: Arguments for the tool in `key=value` format.
+  - `--output-dir <dir>` or `-o <dir>`: Save the output to a directory.
+
+  Example:
+
+  ```bash
+  mcp-proxy-hub-cli call my_tool param1=value1 -o output
+  ```
+
+### Interactive Mode
+
+If you run the CLI without any arguments, it will start in interactive mode. This provides a shell-like interface for running commands.
+
+```bash
+mcp-proxy-hub-cli
+```
+
+Once in interactive mode, you can use the following commands:
+
+- `list`: List available tools.
+- `call <toolName> [args...]`: Call a tool with arguments.
+- `exit`: Exit the interactive session.
+
 ## Installation
 
 To use with Claude Desktop, add the server config:

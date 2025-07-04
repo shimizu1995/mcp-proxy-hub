@@ -34,7 +34,7 @@ async function handleListCommand(config: Config) {
 async function handleCallCommand(
   toolName: string,
   argsStr: string[],
-  options: { outputFile?: string },
+  options: { outputDir?: string },
   config: Config
 ) {
   const args: Record<string, unknown> = {};
@@ -57,15 +57,33 @@ async function handleCallCommand(
     },
   };
   const result = await handleToolCall(request, config);
-  let outputContent = '';
-  if (result.content && Array.isArray(result.content)) {
+  if (options.outputDir) {
+    const outputDir = path.join(process.cwd(), options.outputDir);
+    await fs.mkdir(outputDir, { recursive: true });
+    if (result.content && Array.isArray(result.content)) {
+      for (const [index, item] of result.content.entries()) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const baseFilename = `${toolName}-${timestamp}-${index}`;
+        if (item.type === 'text') {
+          const filePath = path.join(outputDir, `${baseFilename}.txt`);
+          await fs.writeFile(filePath, item.text);
+          console.log(`Content saved to ${filePath}`);
+        } else {
+          const filePath = path.join(outputDir, `${baseFilename}.json`);
+          await fs.writeFile(filePath, JSON.stringify(item, null, 2));
+          console.log(`Content saved to ${filePath}`);
+        }
+      }
+    } else {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filePath = path.join(outputDir, `${toolName}-${timestamp}.json`);
+      await fs.writeFile(filePath, JSON.stringify(result, null, 2));
+      console.log(`Content saved to ${filePath}`);
+    }
+  } else if (result.content && Array.isArray(result.content)) {
     for (const item of result.content) {
       if (item.type === 'text') {
-        if (options.outputFile) {
-          outputContent += item.text + '\n';
-        } else {
-          console.log(item.text);
-        }
+        console.log(item.text);
       } else {
         const outputDir = path.join(process.cwd(), 'output');
         await fs.mkdir(outputDir, { recursive: true });
@@ -78,11 +96,6 @@ async function handleCallCommand(
     }
   } else {
     console.log(JSON.stringify(result, null, 2));
-  }
-
-  if (options.outputFile) {
-    await fs.writeFile(options.outputFile, outputContent);
-    console.log(`Content saved to ${options.outputFile}`);
   }
 }
 
@@ -105,7 +118,7 @@ async function main() {
     .description('Call a tool with specified arguments')
     .argument('<toolName>', 'The name of the tool to call')
     .argument('[args...]', 'Arguments for the tool in key=value format')
-    .option('-o, --output-file <file>', 'Save output to a file')
+    .option('-o, --output-dir <dir>', 'Save output to a directory')
     .action(async (toolName, args, options) => {
       const config = await loadConfig();
       await createClients(config.mcpServers);
@@ -151,20 +164,18 @@ async function main() {
               continue;
             }
             const args: string[] = [];
-            let outputFile: string | undefined;
+            let outputDir: string | undefined;
             for (let i = 0; i < rest.length; i++) {
-              if (rest[i] === '-o' || rest[i] === '--output-file') {
+              if (rest[i] === '-o' || rest[i] === '--output-dir') {
                 if (i + 1 < rest.length) {
-                  outputFile = rest[i + 1];
-                  i++;
-                } else {
-                  console.log('Error: Missing file path for --output-file');
+                  outputDir = rest[i + 1];
+                  i++; // Skip the next value
                 }
               } else {
                 args.push(rest[i]);
               }
             }
-            await handleCallCommand(toolName, args, { outputFile }, config);
+            await handleCallCommand(toolName, args, { outputDir }, config);
             break;
           }
           case 'exit': {
