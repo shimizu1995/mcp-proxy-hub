@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import readline from 'readline';
 import fs from 'fs/promises';
 import path from 'path';
+import inquirer from 'inquirer';
+import commandPrompt from 'inquirer-command-prompt';
 import { loadConfig, Config } from './config.js';
 import { handleToolCall, handleListToolsRequest } from './handlers/index.js';
 import { CallToolRequest, ListToolsRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -14,6 +15,8 @@ const logger = createDefaultLogger({
   dirPath: process.env.MCP_PROXY_LOG_DIRECTORY_PATH,
   level: process.env.MCP_PROXY_LOG_LEVEL === 'debug' ? LogLevel.DEBUG : LogLevel.INFO,
 });
+
+inquirer.registerPrompt('command', commandPrompt);
 
 async function handleListCommand(config: Config) {
   const request: ListToolsRequest = {
@@ -27,13 +30,12 @@ async function handleListCommand(config: Config) {
   console.log(JSON.stringify(result, null, 2));
 }
 
-async function handleCallCommand(rest: string[], config: Config) {
-  const [toolName, ...argsStr] = rest;
-  if (!toolName) {
-    console.log('Please enter a tool name for "call" command.');
-    return;
-  }
-
+async function handleCallCommand(
+  toolName: string,
+  argsStr: string[],
+  options: { outputFile?: string },
+  config: Config
+) {
   const args: Record<string, unknown> = {};
   for (const arg of argsStr) {
     const [key, value] = arg.split('=');
@@ -57,7 +59,12 @@ async function handleCallCommand(rest: string[], config: Config) {
   if (result.content && Array.isArray(result.content)) {
     for (const item of result.content) {
       if (item.type === 'text') {
-        console.log(item.text);
+        if (options.outputFile) {
+          await fs.writeFile(options.outputFile, item.text);
+          console.log(`Content saved to ${options.outputFile}`);
+        } else {
+          console.log(item.text);
+        }
       } else {
         const outputDir = path.join(process.cwd(), 'output');
         await fs.mkdir(outputDir, { recursive: true });
@@ -79,46 +86,63 @@ async function main() {
 
   await handleListCommand(config);
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  console.log('Enter command. Available commands: call <toolName> [args], list, exit');
-
-  rl.on('line', async (line) => {
-    if (line.trim().toLowerCase() === 'exit') {
-      rl.close();
-      return;
-    }
-
-    const [command, ...rest] = line.trim().split(/\s+/);
-
+  let isEnd = false;
+  while (!isEnd) {
     try {
-      switch (command.toLowerCase()) {
+      const { command } = await inquirer.prompt({
+        // @ts-expect-error registered command prompt type
+        type: 'command',
+        name: 'command',
+        message: 'mcp-proxy-hub> ',
+      });
+
+      const parts = command.trim().split(/\s+/);
+      const commandName = parts[0].toLowerCase();
+
+      if (!commandName) {
+        continue;
+      }
+
+      switch (commandName) {
         case 'list': {
           await handleListCommand(config);
           break;
         }
         case 'call': {
-          await handleCallCommand(rest, config);
+          const [, toolName, ...rest] = parts;
+          if (!toolName) {
+            console.log('Please enter a tool name for "call" command.');
+            continue;
+          }
+          const args: string[] = [];
+          let outputFile: string | undefined;
+          for (let i = 0; i < rest.length; i++) {
+            if (rest[i] === '-o' || rest[i] === '--output-file') {
+              if (i + 1 < rest.length) {
+                outputFile = rest[i + 1];
+                i++;
+              } else {
+                console.log('Error: Missing file path for --output-file');
+              }
+            } else {
+              args.push(rest[i]);
+            }
+          }
+          await handleCallCommand(toolName, args, { outputFile }, config);
+          break;
+        }
+        case 'exit': {
+          isEnd = true;
           break;
         }
         default:
-          console.log('Unknown command. Available commands: call <toolName> [args], list, exit');
+          console.log('Unknown command. Available commands: call <toolName> [args...], list, exit');
       }
     } catch (error) {
       logger.error('Error:', error);
     }
-    rl.prompt();
-  });
-
-  rl.on('close', () => {
-    console.log('Exiting CLI.');
-    process.exit(0);
-  });
-
-  rl.prompt();
+  }
+  process.exit(0);
 }
 
 main().catch((error) => {
