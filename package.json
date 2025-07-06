@@ -35,7 +35,8 @@
   "type": "module",
   "bin": {
     "mcp-proxy-hub": "build/index.js",
-    "mcp-proxy-hub-sse": "build/sse.js"
+    "mcp-proxy-hub-sse": "build/sse.js",
+    "mcp-proxy-hub-cli": "build/cli.js"
   },
   "files": [
     "build"
@@ -61,15 +62,19 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.12.3",
     "@types/cors": "2.8.19",
+    "commander": "14.0.0",
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "eventsource": "4.0.0",
     "express": "5.1.0",
+    "inquirer": "12.7.0",
+    "inquirer-command-prompt": "^0.1.0",
     "zod-to-json-schema": "3.24.5"
   },
   "devDependencies": {
     "@eslint/js": "9.29.0",
     "@types/express": "5.0.3",
+    "@types/inquirer": "9.0.8",
     "@types/node": "24.0.1",
     "@vitest/coverage-v8": "3.2.3",
     "esbuild": "0.25.5",

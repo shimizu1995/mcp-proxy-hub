@@ -10,7 +10,7 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 esbuild
   .build({
-    entryPoints: ['src/index.ts', 'src/sse.ts'],
+    entryPoints: ['src/index.ts', 'src/sse.ts', 'src/cli.ts'],
     bundle: true,
     outdir: 'build',
     platform: 'node',
