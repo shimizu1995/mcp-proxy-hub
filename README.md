@@ -81,6 +81,7 @@ cp config.example.json config.json
 - **SSE-type Server**:
   - `type`: "sse" (required)
   - `url`: URL of the SSE server (required)
+  - `headers`: Object of HTTP headers to send with the SSE connection (optional)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
