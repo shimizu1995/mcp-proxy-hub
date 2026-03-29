@@ -39,7 +39,10 @@ async function handleCallCommand(
 ) {
   const args: Record<string, unknown> = {};
   for (const arg of argsStr) {
-    const [key, value] = arg.split('=');
+    const eqIndex = arg.indexOf('=');
+    if (eqIndex === -1) continue;
+    const key = arg.substring(0, eqIndex);
+    const value = arg.substring(eqIndex + 1);
     if (key && value) {
       try {
         args[key] = JSON.parse(value);
@@ -99,6 +102,84 @@ async function handleCallCommand(
   }
 }
 
+function showInteractiveModeHelp() {
+  console.log(`
+Available commands:
+  list                          List all available tools.
+  call <toolName> [args...]     Call a specific tool.
+    <toolName>                  The name of the tool to call.
+    [args...]                   Arguments for the tool in key=value format.
+                                Arrays: key=["value1","value2"]
+                                Objects: key={"a":"b"}
+    -o, --output-dir <dir>      Save output to a directory.
+  help                          Show this help message.
+  exit                          Exit the interactive mode.
+`);
+}
+
+function parseCommandLine(input: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let inQuote: string | null = null;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+
+    if (inQuote) {
+      current += char;
+      if (char === inQuote && input[i - 1] !== '\\') {
+        inQuote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inQuote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === '[') {
+      bracketDepth++;
+      current += char;
+      continue;
+    }
+    if (char === ']') {
+      bracketDepth--;
+      current += char;
+      continue;
+    }
+    if (char === '{') {
+      braceDepth++;
+      current += char;
+      continue;
+    }
+    if (char === '}') {
+      braceDepth--;
+      current += char;
+      continue;
+    }
+
+    if (/\s/.test(char) && bracketDepth === 0 && braceDepth === 0) {
+      if (current) {
+        parts.push(current);
+        current = '';
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current) {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
 async function main() {
   const program = new Command();
   program.name('mcp-proxy-hub').description('A CLI for interacting with the MCP Proxy Hub');
@@ -134,6 +215,7 @@ async function main() {
     const config = await loadConfig();
     await createClients(config.mcpServers);
     await handleListCommand(config);
+    console.log('Entered interactive mode. Type "help" for available commands.');
 
     let isEnd = false;
     while (!isEnd) {
@@ -145,7 +227,7 @@ async function main() {
           message: 'mcp-proxy-hub> ',
         });
 
-        const parts = command.trim().split(/\s+/);
+        const parts = parseCommandLine(command.trim());
         const commandName = parts[0].toLowerCase();
 
         if (!commandName) {
@@ -182,10 +264,13 @@ async function main() {
             isEnd = true;
             break;
           }
+          case 'help': {
+            showInteractiveModeHelp();
+            break;
+          }
           default:
-            console.log(
-              'Unknown command. Available commands: call <toolName> [args...], list, exit'
-            );
+            console.log(`Unknown command: ${commandName}`);
+            showInteractiveModeHelp();
         }
       } catch (error) {
         logger.error('Error:', error);
