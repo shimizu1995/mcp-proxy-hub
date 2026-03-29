@@ -131,6 +131,7 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     // When executeToolCall is called, return a success result
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
       result: 'success from client1',
+      toolResult: 'success from client1',
     });
 
     // 1. First call handleListToolsRequest to populate the clientMaps
@@ -179,7 +180,10 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     );
 
     // Verify tool call result
-    expect(callResult).toEqual({ result: 'success from client1' });
+    expect(callResult).toEqual({
+      result: 'success from client1',
+      toolResult: 'success from client1',
+    });
   });
 
   it('should handle tool call errors when client is not found in map', async () => {
@@ -215,7 +219,7 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     vi.mocked(customToolService.createCustomTools).mockReturnValueOnce([customTool]);
 
     // Mock custom tool call handling
-    const mockCustomResult = { result: 'custom-success' };
+    const mockCustomResult = { result: 'custom-success', toolResult: 'custom-success' };
     vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce(mockCustomResult);
 
     // Define toolsConfig with custom tool mapping
@@ -347,7 +351,10 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
     };
 
     // Mock successful tool execution
-    vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({ result: 'success' });
+    vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+      result: 'success',
+      toolResult: 'success',
+    });
 
     // 1. First call handleListToolsRequest to register the renamed tool
     const listRequest = {

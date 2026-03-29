@@ -10,7 +10,7 @@ import {
 import { getConnectedClient } from '../client.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { z } from 'zod';
+import { Resource } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Registers list resources handler on the server
@@ -18,7 +18,7 @@ import { z } from 'zod';
 export function registerListResourcesHandler(server: Server): void {
   server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
     const connectedClients = getConnectedClient();
-    const allResources: z.infer<typeof ListResourcesResultSchema>['resources'] = [];
+    const allResources: Resource[] = [];
     clientMaps.clearResourceMap();
 
     for (const connectedClient of connectedClients) {

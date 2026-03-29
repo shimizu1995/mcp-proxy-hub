@@ -262,7 +262,7 @@ describe('Tool Handlers', () => {
       vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
 
       // Mock customToolService.handleCustomToolCall
-      const mockResult = { result: 'custom tool result' };
+      const mockResult = { result: 'custom tool result', toolResult: 'custom tool result' };
       vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce(mockResult);
 
       const request = {
@@ -300,7 +300,7 @@ describe('Tool Handlers', () => {
       };
 
       // Mock executeToolCall to return a result
-      const mockResult = { result: 'success' };
+      const mockResult = { result: 'success', toolResult: 'success' };
       vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
 
       const request = {

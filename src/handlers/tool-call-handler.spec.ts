@@ -110,7 +110,7 @@ describe('Tool Call Handler', () => {
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
 
     // Mock handleCustomToolCall to return a result
-    const mockResult = { result: 'custom-success' };
+    const mockResult = { result: 'custom-success', toolResult: 'custom-success' };
     vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce(mockResult);
 
     const request = {
@@ -145,7 +145,7 @@ describe('Tool Call Handler', () => {
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
-    const mockResult = { result: 'success' };
+    const mockResult = { result: 'success', toolResult: 'success' };
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
 
     const request = {
@@ -182,7 +182,7 @@ describe('Tool Call Handler', () => {
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
-    const mockResult = { result: 'success' };
+    const mockResult = { result: 'success', toolResult: 'success' };
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
 
     const request = {
@@ -216,7 +216,7 @@ describe('Tool Call Handler', () => {
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
-    const mockResult = { result: 'success' };
+    const mockResult = { result: 'success', toolResult: 'success' };
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
 
     const request = {
@@ -250,6 +250,7 @@ describe('Tool Call Handler', () => {
     const mockResult = {
       success: true,
       data: 'Response contains test-value token',
+      toolResult: 'Response contains test-value token' as unknown,
     };
     vi.mocked(toolService.executeToolCall).mockResolvedValueOnce(mockResult);
 
@@ -276,6 +277,7 @@ describe('Tool Call Handler', () => {
     expect(result).toEqual({
       success: true,
       data: 'Response contains ${TEST_VAR} token',
+      toolResult: 'Response contains ${TEST_VAR} token',
     });
   });
 
@@ -284,7 +286,10 @@ describe('Tool Call Handler', () => {
     vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
 
     // Mock executeToolCall to return a result
-    vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({ result: 'success' });
+    vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+      result: 'success',
+      toolResult: 'success',
+    });
 
     const request = {
       method: 'tools/call' as const,

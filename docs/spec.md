@@ -21,7 +21,7 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
 2. **Client Management** (`client.ts`):
 
    - Establishes and manages connections to multiple MCP servers based on configuration
-   - Supports both Stdio and SSE transport methods
+   - Supports Stdio, SSE, and Streamable HTTP transport methods
 
 3. **Resource/Tool/Prompt Handlers** (`handlers/`):
 
@@ -43,9 +43,17 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
   - Uses `StdioClientTransport` and `StdioServerTransport` classes
 
 - **Server-Sent Events (SSE)**:
+
   - Used for communication with servers using HTTP connections
   - Uses `SSEClientTransport` and `SSEServerTransport` classes
   - Supports multiple client connections
+
+- **Streamable HTTP**:
+  - Modern HTTP-based transport for MCP communication
+  - Uses `StreamableHTTPClientTransport` and `StreamableHTTPServerTransport` classes
+  - Supports session management with session IDs
+  - Supports both SSE streaming and direct HTTP responses
+  - Recommended over SSE for new deployments
 
 ## Project Structure
 
@@ -191,12 +199,14 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
   - `env`: Environment variables (optional)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
+  - `enable`: Whether to enable the server (optional, default: true)
 
 - **SSE-type Server**:
   - `type`: "sse" (required)
   - `url`: URL of the SSE server (required)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
+  - `enable`: Whether to enable the server (optional, default: true)
 
 #### Tool Filtering Configuration
 
