@@ -22,7 +22,9 @@
     "express",
     "stdio",
     "sse",
-    "server-sent-events"
+    "server-sent-events",
+    "streamable-http",
+    "authentication"
   ],
   "repository": {
     "type": "git",
@@ -36,6 +38,7 @@
   "bin": {
     "mcp-proxy-hub": "build/index.js",
     "mcp-proxy-hub-sse": "build/sse.js",
+    "mcp-proxy-hub-http": "build/streamable-http.js",
     "mcp-proxy-hub-cli": "build/cli.js"
   },
   "files": [
@@ -44,6 +47,7 @@
   "scripts": {
     "dev": "nodemon --watch 'src/**' --ext 'ts,json' --ignore 'src/**/*.spec.ts' --exec 'tsx src/index.ts'",
     "dev:sse": "nodemon --watch 'src/**' --ext 'ts,json' --ignore 'src/**/*.spec.ts' --exec 'tsx src/sse.ts'",
+    "dev:http": "nodemon --watch 'src/**' --ext 'ts,json' --ignore 'src/**/*.spec.ts' --exec 'tsx src/streamable-http.ts'",
     "build": "tsx build.ts",
     "prepare": "npm run build",
     "watch": "tsc --watch",
@@ -60,7 +64,7 @@
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.12.3",
+    "@modelcontextprotocol/sdk": "1.28.0",
     "@types/cors": "2.8.19",
     "commander": "14.0.0",
     "cors": "2.8.5",
@@ -68,7 +72,7 @@
     "eventsource": "4.0.0",
     "express": "5.1.0",
     "inquirer": "12.7.0",
-    "inquirer-command-prompt": "^0.1.0",
+    "inquirer-command-prompt": "0.1.0",
     "zod-to-json-schema": "3.24.5"
   },
   "devDependencies": {

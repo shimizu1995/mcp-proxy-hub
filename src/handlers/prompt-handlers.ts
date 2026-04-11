@@ -3,20 +3,16 @@ import { clientMaps } from '../mappers/client-maps.js';
 import { loadConfig } from '../config.js';
 import { GetPromptResultSchema, ListPromptsResultSchema } from '@modelcontextprotocol/sdk/types.js';
 
+type PromptArgument = {
+  name: string;
+  description?: string;
+  required?: boolean;
+};
+
 type PromptType = {
   description: string;
   name: string;
-  arguments?:
-    | Zod.objectOutputType<
-        {
-          name: Zod.ZodString;
-          description: Zod.ZodOptional<Zod.ZodString>;
-          required: Zod.ZodOptional<Zod.ZodBoolean>;
-        },
-        Zod.ZodTypeAny,
-        'passthrough'
-      >[]
-    | undefined;
+  arguments?: PromptArgument[];
 };
 
 /**

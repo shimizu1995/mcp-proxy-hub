@@ -25,6 +25,7 @@ export type TransportConfigStdio = {
   exposedTools?: ExposedTool[];
   hiddenTools?: string[];
   envVars?: EnvVarConfig[];
+  enable?: boolean;
 };
 
 export type TransportConfigSSE = {
@@ -35,9 +36,24 @@ export type TransportConfigSSE = {
   exposedTools?: ExposedTool[];
   hiddenTools?: string[];
   envVars?: EnvVarConfig[];
+  enable?: boolean;
 };
 
-export type ServerConfig = TransportConfigSSE | TransportConfigStdio;
+export type TransportConfigStreamableHTTP = {
+  type: 'streamable-http';
+  url: string;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+  exposedTools?: ExposedTool[];
+  hiddenTools?: string[];
+  envVars?: EnvVarConfig[];
+  enable?: boolean;
+};
+
+export type ServerConfig =
+  | TransportConfigSSE
+  | TransportConfigStdio
+  | TransportConfigStreamableHTTP;
 export type ServerName = string;
 export type ServerConfigs = Record<ServerName, ServerConfig>;
 
@@ -56,10 +72,24 @@ export type ToolConfig = {
   subtools?: Record<ServerName, SubtoolDefinition>;
 };
 
+export interface AuthConfig {
+  type: 'bearer';
+  token: string;
+}
+
+export interface ServerTransportConfig {
+  type: 'stdio' | 'sse' | 'streamable-http';
+  port?: number;
+  host?: string;
+  path?: string;
+  auth?: AuthConfig;
+}
+
 export interface Config {
   mcpServers: ServerConfigs;
   tools?: Record<string, ToolConfig>;
   envVars?: EnvVarConfig[];
+  serverTransport?: ServerTransportConfig;
 }
 
 export const loadConfig = async (): Promise<Config> => {

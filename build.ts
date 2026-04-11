@@ -3,14 +3,14 @@ import * as esbuild from 'esbuild';
 const cjsSupport = `import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-import url from "url";
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+import __node_url__ from "url";
+const __filename = __node_url__.fileURLToPath(import.meta.url);
+const __dirname = __node_url__.fileURLToPath(new URL(".", import.meta.url));
 `;
 
 esbuild
   .build({
-    entryPoints: ['src/index.ts', 'src/sse.ts', 'src/cli.ts'],
+    entryPoints: ['src/index.ts', 'src/sse.ts', 'src/streamable-http.ts', 'src/cli.ts'],
     bundle: true,
     outdir: 'build',
     platform: 'node',

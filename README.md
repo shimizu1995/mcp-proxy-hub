@@ -77,14 +77,26 @@ cp config.example.json config.json
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
+  - `enable`: Whether to enable the server (optional, default: true)
 
 - **SSE-type Server**:
+
   - `type`: "sse" (required)
   - `url`: URL of the SSE server (required)
   - `headers`: Object of HTTP headers to send with the SSE connection (optional)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
+  - `enable`: Whether to enable the server (optional, default: true)
+
+- **Streamable HTTP-type Server**:
+  - `type`: "streamable-http" (required)
+  - `url`: URL of the Streamable HTTP server (required)
+  - `headers`: Object of HTTP headers to send with requests (optional)
+  - `exposedTools`: Array of tools to expose (optional)
+  - `hiddenTools`: Array of tools to hide (optional)
+  - `envVars`: Environment variable configuration for tool arguments and responses (optional)
+  - `enable`: Whether to enable the server (optional, default: true)
 
 #### Tool Filtering Configuration
 
@@ -131,6 +143,33 @@ cp config.example.json config.json
     ]
     ```
 
+#### Server Transport Configuration
+
+Configure how the proxy hub itself is served via the `serverTransport` section:
+
+```json
+"serverTransport": {
+  "type": "streamable-http",
+  "port": 3006,
+  "host": "0.0.0.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "bearer",
+    "token": "your-secret-token"
+  }
+}
+```
+
+- `type`: Transport type ("stdio", "sse", or "streamable-http")
+- `port`: Port number for HTTP-based transports (default: 3006)
+- `host`: Host to bind to (default: "0.0.0.0")
+- `path`: URL path for Streamable HTTP endpoint (default: "/mcp")
+- `auth`: Authentication configuration (optional)
+  - `type`: "bearer" (currently the only supported type)
+  - `token`: The bearer token required for authentication
+
+Authentication can also be configured via the `MCP_PROXY_AUTH_TOKEN` environment variable.
+
 #### Custom Tool Configuration
 
 - **tools**:
@@ -143,8 +182,11 @@ cp config.example.json config.json
 - `MCP_PROXY_CONFIG_PATH`: Path to the configuration file
 - `MCP_PROXY_LOG_DIRECTORY_PATH`: Path to the log directory
 - `MCP_PROXY_LOG_LEVEL`: Log level ("debug" or "info")
+- `MCP_PROXY_AUTH_TOKEN`: Bearer token for authenticating incoming requests to the proxy server
+- `MCP_PROXY_PATH`: URL path for Streamable HTTP endpoint (default: "/mcp")
 - `KEEP_SERVER_OPEN`: Whether to keep the server open after client disconnection in SSE mode (set to "1" to enable)
-- `PORT`: Port for the SSE server (default: 3006)
+- `PORT`: Port for the SSE/Streamable HTTP server (default: 3006)
+- `HOST`: Host to bind for the HTTP server (default: "0.0.0.0")
 
 ## Development
 
@@ -173,6 +215,8 @@ For development with continuous run:
 npm run dev
 # SSE
 npm run dev:sse
+# Streamable HTTP
+npm run dev:http
 ```
 
 ## CLI

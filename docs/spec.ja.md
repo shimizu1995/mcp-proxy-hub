@@ -21,7 +21,7 @@ MCP Proxy Hub（MCPプロキシハブ）は、複数のMCP（Model Context Proto
 2. **クライアント管理** (`client.ts`)：
 
    - 設定ファイルに基づいて複数のMCPサーバーへの接続を確立・管理
-   - StdioとSSEの両方のトランスポート方式をサポート
+   - Stdio、SSE、Streamable HTTPのトランスポート方式をサポート
 
 3. **リソース/ツール/プロンプトハンドラー** (`handlers/`)：
 
@@ -43,9 +43,17 @@ MCP Proxy Hub（MCPプロキシハブ）は、複数のMCP（Model Context Proto
   - `StdioClientTransport`と`StdioServerTransport`クラスを使用
 
 - **Server-Sent Events（SSE）**：
+
   - HTTP接続を利用したサーバーとの通信に使用
   - `SSEClientTransport`と`SSEServerTransport`クラスを使用
   - 複数クライアント接続のサポート
+
+- **Streamable HTTP**：
+  - 最新のHTTPベースMCP通信方式
+  - `StreamableHTTPClientTransport`と`StreamableHTTPServerTransport`クラスを使用
+  - セッション管理（セッションID）をサポート
+  - SSEストリーミングと直接HTTPレスポンスの両方をサポート
+  - 新規導入にはSSEよりもStreamable HTTPを推奨
 
 ## Project Structure
 
@@ -191,12 +199,14 @@ MCP Proxy Hub（MCPプロキシハブ）は、複数のMCP（Model Context Proto
   - `env`: 環境変数（オプション）
   - `exposedTools`: 公開するツールの配列（オプション）
   - `hiddenTools`: 非表示にするツールの配列（オプション）
+  - `enable`: サーバーを有効にするかどうか（オプション、デフォルト: true）
 
 - **SSE型サーバー**:
   - `type`: 「sse」（必須）
   - `url`: SSEサーバーのURL（必須）
   - `exposedTools`: 公開するツールの配列（オプション）
   - `hiddenTools`: 非表示にするツールの配列（オプション）
+  - `enable`: サーバーを有効にするかどうか（オプション、デフォルト: true）
 
 #### ツールフィルタリング設定
 

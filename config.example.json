@@ -3,6 +3,7 @@
     "Example Server 1": {
       "command": "/path/to/server1/build/index.js",
       "exposedTools": ["tool1", { "original": "tool2", "exposed": "renamed_tool2" }],
+      "enable": true,
       "envVars": [
         { "name": "API_KEY", "value": "my-api-key", "expand": true, "unexpand": true },
         { "name": "USER_ID", "value": "user123", "expand": true, "unexpand": false },
@@ -22,10 +23,28 @@
     "Example Server 3": {
       "type": "sse",
       "url": "http://example.com/sse",
+      "enable": false,
       "headers": {
         "Authorization": "Bearer <token>",
         "X-Custom-Header": "value"
       }
+    },
+    "Example Server 4": {
+      "type": "streamable-http",
+      "url": "http://example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  },
+  "serverTransport": {
+    "type": "streamable-http",
+    "port": 3006,
+    "host": "0.0.0.0",
+    "path": "/mcp",
+    "auth": {
+      "type": "bearer",
+      "token": "your-secret-token"
     }
   },
   "envVars": [

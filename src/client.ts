@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { ServerConfig } from './config.js';
 import { clientMaps } from './mappers/client-maps.js';
@@ -29,7 +30,6 @@ const createClient = (
   try {
     if (config.type === 'sse') {
       const customFetch: FetchLike = (url: string | URL, init?: RequestInit) => {
-        // Custom fetch implementation to handle headers and other options
         const headers = new Headers(init?.headers);
         if (config.headers) {
           Object.entries(config.headers).forEach(([key, value]) => {
@@ -43,6 +43,23 @@ const createClient = (
       };
       transport = new SSEClientTransport(new URL(config.url), {
         eventSourceInit: { fetch: customFetch },
+      });
+    } else if (config.type === 'streamable-http') {
+      const configHeaders = config.headers;
+      const customFetch = configHeaders
+        ? (url: string | URL | Request, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            Object.entries(configHeaders).forEach(([key, value]) => {
+              headers.set(key, value);
+            });
+            return fetch(url, {
+              ...init,
+              headers: Object.fromEntries(headers.entries()),
+            });
+          }
+        : undefined;
+      transport = new StreamableHTTPClientTransport(new URL(config.url), {
+        fetch: customFetch,
       });
     } else {
       console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
@@ -79,9 +96,8 @@ const createClient = (
     },
     {
       capabilities: {
-        prompts: {},
-        resources: { subscribe: true },
-        tools: {},
+        roots: {},
+        sampling: {},
       },
     }
   );
@@ -151,6 +167,12 @@ export const createClients = async (
     serverName: string,
     config: ServerConfig
   ): Promise<ConnectedClient | null> => {
+    // Check if server is enabled (default to true if not specified)
+    if (config.enable === false) {
+      console.log(`Server ${serverName} is disabled, skipping connection`);
+      return null;
+    }
+
     console.log(`Connecting to server: ${serverName}`);
 
     return connectWithRetry(serverName, config, async (client, transport) => {
@@ -191,6 +213,12 @@ export const restartClient = async (
   serverName: string,
   config: ServerConfig
 ): Promise<ConnectedClient | null> => {
+  // Check if server is enabled (default to true if not specified)
+  if (config.enable === false) {
+    console.log(`Server ${serverName} is disabled, skipping restart`);
+    return null;
+  }
+
   console.log(`Restarting server: ${serverName}`);
 
   // Find the client to restart
