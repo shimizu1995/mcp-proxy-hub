@@ -64,7 +64,7 @@
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@modelcontextprotocol/sdk": "1.28.0",
     "@types/cors": "2.8.19",
     "commander": "14.0.0",
     "cors": "2.8.5",
@@ -72,7 +72,7 @@
     "eventsource": "4.0.0",
     "express": "5.1.0",
     "inquirer": "12.7.0",
-    "inquirer-command-prompt": "^0.1.0",
+    "inquirer-command-prompt": "0.1.0",
     "zod-to-json-schema": "3.24.5"
   },
   "devDependencies": {
