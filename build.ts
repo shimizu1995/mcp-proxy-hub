@@ -3,9 +3,9 @@ import * as esbuild from 'esbuild';
 const cjsSupport = `import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-import url from "url";
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+import __node_url__ from "url";
+const __filename = __node_url__.fileURLToPath(import.meta.url);
+const __dirname = __node_url__.fileURLToPath(new URL(".", import.meta.url));
 `;
 
 esbuild
