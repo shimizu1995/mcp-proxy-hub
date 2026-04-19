@@ -176,6 +176,7 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
       { param: 'value' },
       mockClient1,
       undefined,
+      undefined,
       undefined
     );
 
@@ -282,7 +283,8 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
       { server: 'client1', tool: 'subtool1' },
       undefined,
       config.mcpServers,
-      config.envVars
+      config.envVars,
+      undefined
     );
 
     // Verify custom tool call result
@@ -398,7 +400,8 @@ describe('Integration Tests for Tool Handlers with Shared ClientMaps', () => {
       {},
       mockClient1,
       undefined,
-      'originalTool'
+      'originalTool',
+      undefined
     );
   });
 });

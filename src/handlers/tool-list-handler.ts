@@ -4,6 +4,7 @@ import { customToolService } from '../services/custom-tool-service.js';
 import { clientMaps } from '../mappers/client-maps.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ServerConfigs } from '../config.js';
+import { resolveTimeoutOptions } from '../utils/timeout-utils.js';
 
 /**
  * Handles a request to list tools from all connected clients
@@ -38,7 +39,8 @@ export async function handleListToolsRequest(
         >;
       }
     >;
-  }
+  },
+  globalTimeoutMs?: number
 ): Promise<{ tools: Tool[] }> {
   const exposedTools: Tool[] = [];
   const allTools: (Tool & { serverName: string })[] = [];
@@ -52,11 +54,15 @@ export async function handleListToolsRequest(
       // Get server config for tool filtering
       const serverConfig = serverConfigs[connectedClient.name];
 
+      // Resolve timeout options: per-server overrides global
+      const timeoutOptions = resolveTimeoutOptions(globalTimeoutMs, serverConfig?.timeout);
+
       // Fetch tools from the client
       const clientAllTools = await toolService.fetchToolsFromClient(
         connectedClient,
         serverConfig,
-        request.params?._meta
+        request.params?._meta,
+        timeoutOptions
       );
 
       const filteredTools = toolService.filterTools(clientAllTools, serverConfig);

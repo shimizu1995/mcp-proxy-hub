@@ -19,18 +19,21 @@ export class ToolService {
   async fetchToolsFromClient(
     connectedClient: ConnectedClient,
     serverConfig?: ServerConfig,
-    meta?: Record<string, unknown>
+    meta?: Record<string, unknown>,
+    options?: { timeout: number }
   ): Promise<Tool[]> {
     try {
       // Request tools from the client
-      const response = await connectedClient.client.request(
-        {
-          method: 'tools/list',
-          params: {
-            _meta: meta,
-          },
+      const listRequest = {
+        method: 'tools/list' as const,
+        params: {
+          _meta: meta,
         },
-        ListToolsResultSchema
+      };
+      const response = await connectedClient.client.request(
+        listRequest,
+        ListToolsResultSchema,
+        options
       );
 
       // Check if tools were returned and ensure it's an array
@@ -89,7 +92,8 @@ export class ToolService {
     args: Record<string, unknown>,
     client: ConnectedClient,
     meta?: Record<string, unknown>,
-    originalToolName?: string
+    originalToolName?: string,
+    options?: { timeout: number }
   ) {
     try {
       // The name to use when calling the tool (may be different from what the user specified)
@@ -109,7 +113,11 @@ export class ToolService {
       logServerToolRequest(toolName, client.name, request);
 
       // Call the tool
-      const result = await client.client.request(request, CompatibilityCallToolResultSchema);
+      const result = await client.client.request(
+        request,
+        CompatibilityCallToolResultSchema,
+        options
+      );
 
       // Log the tool response
       logServerToolResponse(toolName, result);

@@ -26,6 +26,7 @@ export type TransportConfigStdio = {
   hiddenTools?: string[];
   envVars?: EnvVarConfig[];
   enable?: boolean;
+  timeout?: number;
 };
 
 export type TransportConfigSSE = {
@@ -37,6 +38,7 @@ export type TransportConfigSSE = {
   hiddenTools?: string[];
   envVars?: EnvVarConfig[];
   enable?: boolean;
+  timeout?: number;
 };
 
 export type TransportConfigStreamableHTTP = {
@@ -48,6 +50,7 @@ export type TransportConfigStreamableHTTP = {
   hiddenTools?: string[];
   envVars?: EnvVarConfig[];
   enable?: boolean;
+  timeout?: number;
 };
 
 export type ServerConfig =
@@ -90,6 +93,7 @@ export interface Config {
   tools?: Record<string, ToolConfig>;
   envVars?: EnvVarConfig[];
   serverTransport?: ServerTransportConfig;
+  timeout?: number;
 }
 
 export const loadConfig = async (): Promise<Config> => {

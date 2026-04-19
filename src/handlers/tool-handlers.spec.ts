@@ -119,13 +119,15 @@ describe('Tool Handlers', () => {
         1,
         mockClient1,
         serverConfigs.client1,
-        { test: 'metadata' }
+        { test: 'metadata' },
+        undefined
       );
       expect(toolService.fetchToolsFromClient).toHaveBeenNthCalledWith(
         2,
         mockClient2,
         serverConfigs.client2,
-        { test: 'metadata' }
+        { test: 'metadata' },
+        undefined
       );
 
       // Verify result includes tools from both clients
@@ -283,7 +285,8 @@ describe('Tool Handlers', () => {
         { param: 'value' },
         { progressToken: 'token123' },
         config.mcpServers,
-        config.envVars
+        config.envVars,
+        undefined
       );
 
       // Verify result
@@ -328,7 +331,8 @@ describe('Tool Handlers', () => {
         { param1: 'value1' },
         mockClient1,
         { progressToken: 'token123' },
-        'original-tool'
+        'original-tool',
+        undefined
       );
 
       // Verify result

@@ -349,11 +349,133 @@ describe('CustomToolService', () => {
             },
           },
         },
-        expect.anything()
+        expect.anything(),
+        undefined
       );
 
       // Verify result
       expect(result).toBe(mockResult);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should forward resolved timeout options when globalTimeoutMs is set', async () => {
+      vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
+
+      const mockResult = { result: 'success' };
+      mockClient1.client.request = vi.fn().mockResolvedValueOnce(mockResult);
+
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await customToolService.handleCustomToolCall(
+        'customTool',
+        { server: 'server1', tool: 'tool1' },
+        undefined,
+        undefined,
+        undefined,
+        30000
+      );
+
+      // Global timeout used, no per-server config
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/call' }),
+        expect.anything(),
+        { timeout: 30000 }
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use per-server timeout over global timeout', async () => {
+      vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
+
+      const mockResult = { result: 'success' };
+      mockClient1.client.request = vi.fn().mockResolvedValueOnce(mockResult);
+
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const serverConfigs = {
+        server1: {
+          command: 'test-command',
+          timeout: 5000,
+        },
+      };
+
+      await customToolService.handleCustomToolCall(
+        'customTool',
+        { server: 'server1', tool: 'tool1' },
+        undefined,
+        serverConfigs,
+        undefined,
+        30000
+      );
+
+      // Per-server timeout (5000) wins over global (30000)
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/call' }),
+        expect.anything(),
+        { timeout: 5000 }
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should resolve 0 per-server timeout as NO_TIMEOUT_MS', async () => {
+      vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
+
+      const mockResult = { result: 'success' };
+      mockClient1.client.request = vi.fn().mockResolvedValueOnce(mockResult);
+
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const serverConfigs = {
+        server1: {
+          command: 'test-command',
+          timeout: 0,
+        },
+      };
+
+      await customToolService.handleCustomToolCall(
+        'customTool',
+        { server: 'server1', tool: 'tool1' },
+        undefined,
+        serverConfigs,
+        undefined,
+        30000
+      );
+
+      // 0 timeout means no timeout (NO_TIMEOUT_MS = 2_147_483_647)
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/call' }),
+        expect.anything(),
+        { timeout: 2_147_483_647 }
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should pass undefined options when neither global nor per-server timeout is configured', async () => {
+      vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
+
+      const mockResult = { result: 'success' };
+      mockClient1.client.request = vi.fn().mockResolvedValueOnce(mockResult);
+
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await customToolService.handleCustomToolCall(
+        'customTool',
+        { server: 'server1', tool: 'tool1' },
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      );
+
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/call' }),
+        expect.anything(),
+        undefined
+      );
 
       consoleLogSpy.mockRestore();
     });
@@ -439,7 +561,8 @@ describe('CustomToolService', () => {
             },
           },
         },
-        expect.anything()
+        expect.anything(),
+        undefined
       );
 
       // Verify result has unexpanded values
