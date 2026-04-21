@@ -359,7 +359,7 @@ describe('CustomToolService', () => {
       consoleLogSpy.mockRestore();
     });
 
-    it('should forward resolved timeout options when globalTimeoutMs is set', async () => {
+    it('should forward resolved timeout options when globalTimeoutSec is set', async () => {
       vi.mocked(clientMaps.getClientForCustomTool).mockReturnValueOnce(mockClient1);
 
       const mockResult = { result: 'success' };
@@ -373,10 +373,10 @@ describe('CustomToolService', () => {
         undefined,
         undefined,
         undefined,
-        30000
+        30
       );
 
-      // Global timeout used, no per-server config
+      // Global timeout (30s) used and converted to ms for the SDK
       expect(mockClient1.client.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: 'tools/call' }),
         expect.anything(),
@@ -397,7 +397,7 @@ describe('CustomToolService', () => {
       const serverConfigs = {
         server1: {
           command: 'test-command',
-          timeout: 5000,
+          timeout: 5,
         },
       };
 
@@ -407,10 +407,10 @@ describe('CustomToolService', () => {
         undefined,
         serverConfigs,
         undefined,
-        30000
+        30
       );
 
-      // Per-server timeout (5000) wins over global (30000)
+      // Per-server timeout (5s) wins over global (30s); converted to ms for the SDK
       expect(mockClient1.client.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: 'tools/call' }),
         expect.anything(),
@@ -441,7 +441,7 @@ describe('CustomToolService', () => {
         undefined,
         serverConfigs,
         undefined,
-        30000
+        30
       );
 
       // 0 timeout means no timeout (NO_TIMEOUT_MS = 2_147_483_647)

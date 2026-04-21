@@ -327,7 +327,7 @@ describe('Tool Call Handler', () => {
         toolResult: 'success',
       });
 
-      const configWithGlobalTimeout: Config = { ...config, timeout: 30000 };
+      const configWithGlobalTimeout: Config = { ...config, timeout: 30 };
 
       const request = {
         method: 'tools/call' as const,
@@ -356,7 +356,7 @@ describe('Tool Call Handler', () => {
       const configWithServerTimeout: Config = {
         ...config,
         mcpServers: {
-          client1: { command: 'test-command', timeout: 5000 },
+          client1: { command: 'test-command', timeout: 5 },
         },
       };
 
@@ -386,9 +386,9 @@ describe('Tool Call Handler', () => {
 
       const configWithBothTimeouts: Config = {
         ...config,
-        timeout: 30000,
+        timeout: 30,
         mcpServers: {
-          client1: { command: 'test-command', timeout: 5000 },
+          client1: { command: 'test-command', timeout: 5 },
         },
       };
 
@@ -467,14 +467,14 @@ describe('Tool Call Handler', () => {
       );
     });
 
-    it('custom tool path: handleCustomToolCall called with globalTimeoutMs', async () => {
+    it('custom tool path: handleCustomToolCall called with globalTimeoutSec', async () => {
       vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
       vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce({
         result: 'custom-success',
         toolResult: 'custom-success',
       });
 
-      const configWithGlobalTimeout: Config = { ...config, timeout: 30000 };
+      const configWithGlobalTimeout: Config = { ...config, timeout: 30 };
 
       const request = {
         method: 'tools/call' as const,
@@ -492,7 +492,7 @@ describe('Tool Call Handler', () => {
         undefined,
         configWithGlobalTimeout.mcpServers,
         configWithGlobalTimeout.envVars,
-        30000
+        30
       );
     });
   });

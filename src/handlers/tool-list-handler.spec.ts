@@ -324,24 +324,24 @@ describe('Tool List Handler', () => {
 
   describe('timeout resolution in tool-list-handler', () => {
     it('should pass timeout options to fetchToolsFromClient when server has a timeout', async () => {
-      // Give client1 a per-server timeout of 5000ms
-      serverConfigs.client1 = { ...serverConfigs.client1, timeout: 5000 };
+      // Give client1 a per-server timeout of 5 seconds
+      serverConfigs.client1 = { ...serverConfigs.client1, timeout: 5 };
 
       const request = {
         method: 'tools/list' as const,
         params: {},
       };
 
-      await handleListToolsRequest(request, connectedClients, serverConfigs, undefined, 30000);
+      await handleListToolsRequest(request, connectedClients, serverConfigs, undefined, 30);
 
-      // client1 has per-server timeout 5000; per-server wins over global 30000
+      // client1 has per-server timeout 5s; per-server wins over global 30s (converted to ms for the SDK)
       expect(mockClient1.client.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: 'tools/list' }),
         ListToolsResultSchema,
         { timeout: 5000 }
       );
 
-      // client2 has no per-server timeout; falls back to global 30000
+      // client2 has no per-server timeout; falls back to global 30s (30000 ms)
       expect(mockClient2.client.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: 'tools/list' }),
         ListToolsResultSchema,

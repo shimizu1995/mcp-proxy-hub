@@ -1,5 +1,5 @@
 {
-  "timeout": 30000,
+  "timeout": 30,
   "mcpServers": {
     "Example Server 1": {
       "command": "/path/to/server1/build/index.js",

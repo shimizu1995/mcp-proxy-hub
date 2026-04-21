@@ -77,7 +77,7 @@ cp config.example.json config.json
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
-  - `timeout`: Request timeout in milliseconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
+  - `timeout`: Request timeout in seconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
   - `enable`: Whether to enable the server (optional, default: true)
 
 - **SSE-type Server**:
@@ -88,7 +88,7 @@ cp config.example.json config.json
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
-  - `timeout`: Request timeout in milliseconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
+  - `timeout`: Request timeout in seconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
   - `enable`: Whether to enable the server (optional, default: true)
 
 - **Streamable HTTP-type Server**:
@@ -98,7 +98,7 @@ cp config.example.json config.json
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
   - `envVars`: Environment variable configuration for tool arguments and responses (optional)
-  - `timeout`: Request timeout in milliseconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
+  - `timeout`: Request timeout in seconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
   - `enable`: Whether to enable the server (optional, default: true)
 
 #### Tool Filtering Configuration
@@ -150,21 +150,21 @@ cp config.example.json config.json
 
 Controls how long the proxy hub waits for a downstream server to respond to a tool call (`tools/call`) or tool listing (`tools/list`) before aborting.
 
-- **Top-level `timeout`**: Global default in milliseconds applied to all servers.
+- **Top-level `timeout`**: Global default in seconds applied to all servers.
 - **Per-server `timeout`** (inside each `mcpServers[name]`): Overrides the global value for that server.
 - **`0`**: Disables the timeout for that scope (no upper bound).
 - **Unset**: Falls back to the MCP SDK default (60 seconds).
 
-Values above `2147483647` ms (the maximum safe `setTimeout` delay) are capped to that ceiling. Negative, `NaN`, or non-number values are ignored and fall through to the next level with a warning.
+Values whose millisecond conversion (`timeout * 1000`) exceeds `2147483647` ms (the maximum safe `setTimeout` delay) are capped to that ceiling. Negative, `NaN`, or non-number values are ignored and fall through to the next level with a warning.
 
 Example:
 
 ```json
 {
-  "timeout": 30000,
+  "timeout": 30,
   "mcpServers": {
     "slow-server": { "command": "...", "timeout": 0 },
-    "fast-server": { "command": "...", "timeout": 5000 }
+    "fast-server": { "command": "...", "timeout": 5 }
   }
 }
 ```

@@ -40,7 +40,7 @@ export async function handleListToolsRequest(
       }
     >;
   },
-  globalTimeoutMs?: number
+  globalTimeoutSec?: number
 ): Promise<{ tools: Tool[] }> {
   const exposedTools: Tool[] = [];
   const allTools: (Tool & { serverName: string })[] = [];
@@ -55,7 +55,7 @@ export async function handleListToolsRequest(
       const serverConfig = serverConfigs[connectedClient.name];
 
       // Resolve timeout options: per-server overrides global
-      const timeoutOptions = resolveTimeoutOptions(globalTimeoutMs, serverConfig?.timeout);
+      const timeoutOptions = resolveTimeoutOptions(globalTimeoutSec, serverConfig?.timeout);
 
       // Fetch tools from the client
       const clientAllTools = await toolService.fetchToolsFromClient(

@@ -217,7 +217,7 @@ For example, to use the Edit tool from claude_code, your request would look like
     meta?: { progressToken?: string | number },
     serverConfigs?: Record<string, ServerConfig>,
     globalEnvVars?: EnvVarConfig[],
-    globalTimeoutMs?: number
+    globalTimeoutSec?: number
   ) {
     if (!requestArgs) {
       throw new Error('Missing required parameters');
@@ -254,7 +254,7 @@ For example, to use the Edit tool from claude_code, your request would look like
       const serverConfig = serverConfigs?.[client.name];
 
       // Resolve timeout options: per-server overrides global
-      const timeoutOptions = resolveTimeoutOptions(globalTimeoutMs, serverConfig?.timeout);
+      const timeoutOptions = resolveTimeoutOptions(globalTimeoutSec, serverConfig?.timeout);
 
       // Combine global and server-specific environment variables
       const combinedEnvVars = combineEnvVars(globalEnvVars, serverConfig?.envVars);

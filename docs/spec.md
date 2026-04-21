@@ -199,7 +199,7 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
   - `env`: Environment variables (optional)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
-  - `timeout`: Request timeout in milliseconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
+  - `timeout`: Request timeout in seconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
   - `enable`: Whether to enable the server (optional, default: true)
 
 - **SSE-type Server**:
@@ -207,7 +207,7 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
   - `url`: URL of the SSE server (required)
   - `exposedTools`: Array of tools to expose (optional)
   - `hiddenTools`: Array of tools to hide (optional)
-  - `timeout`: Request timeout in milliseconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
+  - `timeout`: Request timeout in seconds for downstream tool calls (optional, overrides the top-level `timeout`; `0` disables the timeout)
   - `enable`: Whether to enable the server (optional, default: true)
 
 #### Tool Filtering Configuration
@@ -225,12 +225,12 @@ MCP Proxy Hub is a proxy server that aggregates multiple MCP (Model Context Prot
 
 Controls how long the proxy hub waits for a downstream server to respond to a tool call (`tools/call`) or tool listing (`tools/list`).
 
-- **Top-level `timeout`**: Global default in milliseconds applied to all servers.
+- **Top-level `timeout`**: Global default in seconds applied to all servers.
 - **Per-server `timeout`**: Overrides the global value for that server.
 - **`0`**: Disables the timeout (no upper bound).
 - **Unset**: Falls back to the MCP SDK default (60 seconds).
 
-Values above the maximum safe `setTimeout` delay (`2147483647` ms) are capped. Invalid values (negative, `NaN`, non-number) fall through to the next level with a warning.
+Values whose millisecond conversion (`timeout * 1000`) exceeds the maximum safe `setTimeout` delay (`2147483647` ms) are capped. Invalid values (negative, `NaN`, non-number) fall through to the next level with a warning.
 
 #### Custom Tool Configuration
 
