@@ -71,14 +71,16 @@ describe('Tool List Handler', () => {
         method: 'tools/list',
         params: { _meta: { test: 'metadata' } },
       },
-      ListToolsResultSchema
+      ListToolsResultSchema,
+      undefined
     );
     expect(mockClient2.client.request).toHaveBeenCalledWith(
       {
         method: 'tools/list',
         params: { _meta: { test: 'metadata' } },
       },
-      ListToolsResultSchema
+      ListToolsResultSchema,
+      undefined
     );
 
     // Verify the result contains tools from both clients (with prefixed descriptions)
@@ -159,15 +161,16 @@ describe('Tool List Handler', () => {
         method: 'tools/list',
         params: {},
       },
-
-      ListToolsResultSchema
+      ListToolsResultSchema,
+      undefined
     );
     expect(mockClient2.client.request).toHaveBeenCalledWith(
       {
         method: 'tools/list',
         params: {},
       },
-      ListToolsResultSchema
+      ListToolsResultSchema,
+      undefined
     );
   });
 
@@ -198,7 +201,8 @@ describe('Tool List Handler', () => {
         method: 'tools/list',
         params: {},
       },
-      expect.any(Object)
+      expect.any(Object),
+      undefined
     );
 
     // The result should contain the mapped tool (actual mapping behavior depends on implementation)
@@ -316,5 +320,53 @@ describe('Tool List Handler', () => {
     expect(result.tools).toEqual([
       { name: 'tool2', description: '[client2] Tool 2', inputSchema: { type: 'object' } },
     ]);
+  });
+
+  describe('timeout resolution in tool-list-handler', () => {
+    it('should pass timeout options to fetchToolsFromClient when server has a timeout', async () => {
+      // Give client1 a per-server timeout of 5 seconds
+      serverConfigs.client1 = { ...serverConfigs.client1, timeout: 5 };
+
+      const request = {
+        method: 'tools/list' as const,
+        params: {},
+      };
+
+      await handleListToolsRequest(request, connectedClients, serverConfigs, undefined, 30);
+
+      // client1 has per-server timeout 5s; per-server wins over global 30s (converted to ms for the SDK)
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/list' }),
+        ListToolsResultSchema,
+        { timeout: 5000 }
+      );
+
+      // client2 has no per-server timeout; falls back to global 30s (30000 ms)
+      expect(mockClient2.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/list' }),
+        ListToolsResultSchema,
+        { timeout: 30000 }
+      );
+    });
+
+    it('should pass undefined options when neither global nor per-server timeout is configured', async () => {
+      const request = {
+        method: 'tools/list' as const,
+        params: {},
+      };
+
+      await handleListToolsRequest(request, connectedClients, serverConfigs);
+
+      expect(mockClient1.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/list' }),
+        ListToolsResultSchema,
+        undefined
+      );
+      expect(mockClient2.client.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'tools/list' }),
+        ListToolsResultSchema,
+        undefined
+      );
+    });
   });
 });

@@ -130,7 +130,8 @@ describe('Tool Call Handler', () => {
       { server: 'server1', tool: 'tool1' },
       { progressToken: 'token123' },
       config.mcpServers,
-      config.envVars
+      config.envVars,
+      undefined
     );
 
     // Verify validateToolAccess was not called
@@ -165,6 +166,7 @@ describe('Tool Call Handler', () => {
       { param1: 'value1' }, // Mocked expandEnvVars just returns the input
       mockClient,
       { progressToken: 'token123' },
+      undefined,
       undefined
     );
 
@@ -207,7 +209,8 @@ describe('Tool Call Handler', () => {
       {},
       mockClient,
       undefined,
-      'originalTool'
+      'originalTool',
+      undefined
     );
   });
 
@@ -234,6 +237,7 @@ describe('Tool Call Handler', () => {
       'tool1',
       {}, // Empty object instead of undefined
       mockClient,
+      undefined,
       undefined,
       undefined
     );
@@ -269,6 +273,7 @@ describe('Tool Call Handler', () => {
       'sensitiveDataTool',
       { apiKey: 'secret-api-key', userId: 'user123' },
       mockClient,
+      undefined,
       undefined,
       undefined
     );
@@ -309,7 +314,186 @@ describe('Tool Call Handler', () => {
       { param1: 'value1' },
       mockClient,
       { progressToken: 'token123' },
+      undefined,
       undefined
     );
+  });
+
+  describe('timeout resolution in tool-call-handler', () => {
+    it('global-only timeout: executeToolCall called with global timeout options', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+        result: 'success',
+        toolResult: 'success',
+      });
+
+      const configWithGlobalTimeout: Config = { ...config, timeout: 30 };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: { name: 'tool1', arguments: {} },
+      };
+
+      await handleToolCall(request, configWithGlobalTimeout);
+
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'tool1',
+        {},
+        mockClient,
+        undefined,
+        undefined,
+        { timeout: 30000 }
+      );
+    });
+
+    it('per-server-only timeout: executeToolCall called with per-server timeout options', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+        result: 'success',
+        toolResult: 'success',
+      });
+
+      const configWithServerTimeout: Config = {
+        ...config,
+        mcpServers: {
+          client1: { command: 'test-command', timeout: 5 },
+        },
+      };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: { name: 'tool1', arguments: {} },
+      };
+
+      await handleToolCall(request, configWithServerTimeout);
+
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'tool1',
+        {},
+        mockClient,
+        undefined,
+        undefined,
+        { timeout: 5000 }
+      );
+    });
+
+    it('per-server overrides global timeout', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+        result: 'success',
+        toolResult: 'success',
+      });
+
+      const configWithBothTimeouts: Config = {
+        ...config,
+        timeout: 30,
+        mcpServers: {
+          client1: { command: 'test-command', timeout: 5 },
+        },
+      };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: { name: 'tool1', arguments: {} },
+      };
+
+      await handleToolCall(request, configWithBothTimeouts);
+
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'tool1',
+        {},
+        mockClient,
+        undefined,
+        undefined,
+        { timeout: 5000 }
+      );
+    });
+
+    it('neither timeout configured: executeToolCall called with undefined options', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+        result: 'success',
+        toolResult: 'success',
+      });
+
+      const configNoTimeout: Config = {
+        mcpServers: { client1: { command: 'test-command' } },
+      };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: { name: 'tool1', arguments: {} },
+      };
+
+      await handleToolCall(request, configNoTimeout);
+
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'tool1',
+        {},
+        mockClient,
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+
+    it('global timeout=0 resolves to NO_TIMEOUT_MS', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockClient);
+      vi.mocked(toolService.executeToolCall).mockResolvedValueOnce({
+        result: 'success',
+        toolResult: 'success',
+      });
+
+      const configZeroTimeout: Config = {
+        ...config,
+        timeout: 0,
+        mcpServers: { client1: { command: 'test-command' } },
+      };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: { name: 'tool1', arguments: {} },
+      };
+
+      await handleToolCall(request, configZeroTimeout);
+
+      expect(toolService.executeToolCall).toHaveBeenCalledWith(
+        'tool1',
+        {},
+        mockClient,
+        undefined,
+        undefined,
+        { timeout: 2_147_483_647 }
+      );
+    });
+
+    it('custom tool path: handleCustomToolCall called with globalTimeoutSec', async () => {
+      vi.mocked(clientMaps.getClientForTool).mockReturnValueOnce(mockCustomClient);
+      vi.mocked(customToolService.handleCustomToolCall).mockResolvedValueOnce({
+        result: 'custom-success',
+        toolResult: 'custom-success',
+      });
+
+      const configWithGlobalTimeout: Config = { ...config, timeout: 30 };
+
+      const request = {
+        method: 'tools/call' as const,
+        params: {
+          name: 'customTool',
+          arguments: { server: 'server1', tool: 'tool1' },
+        },
+      };
+
+      await handleToolCall(request, configWithGlobalTimeout);
+
+      expect(customToolService.handleCustomToolCall).toHaveBeenCalledWith(
+        'customTool',
+        { server: 'server1', tool: 'tool1' },
+        undefined,
+        configWithGlobalTimeout.mcpServers,
+        configWithGlobalTimeout.envVars,
+        30
+      );
+    });
   });
 });

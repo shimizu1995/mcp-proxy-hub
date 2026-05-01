@@ -5,6 +5,7 @@ import { expandEnvVars, unexpandEnvVars, combineEnvVars } from '../utils/env-var
 import { JsonObject } from '../types/json.js';
 import { Config } from '../config.js';
 import { logUnknownTool } from '../utils/debug-utils.js';
+import { resolveTimeoutOptions } from '../utils/timeout-utils.js';
 
 /**
  * Handles tool call requests
@@ -41,7 +42,8 @@ export async function handleToolCall(
       args,
       request.params._meta,
       config.mcpServers,
-      config.envVars
+      config.envVars,
+      config.timeout
     );
   }
 
@@ -53,6 +55,9 @@ export async function handleToolCall(
   if (serverConfig) {
     toolService.validateToolAccess(toolName, originalToolName, serverConfig);
   }
+
+  // Resolve timeout options: per-server overrides global
+  const timeoutOptions = resolveTimeoutOptions(config.timeout, serverConfig?.timeout);
 
   // Combine global and server-specific environment variables
   const combinedEnvVars = combineEnvVars(config.envVars, serverConfig?.envVars);
@@ -69,7 +74,8 @@ export async function handleToolCall(
     expandedArgs as Record<string, unknown>,
     clientForTool,
     request.params._meta,
-    originalToolName
+    originalToolName,
+    timeoutOptions
   );
 
   // Unexpand environment variables in response if configured

@@ -9,6 +9,7 @@ import {
 } from '../utils/debug-utils.js';
 import { EnvVarConfig, ServerConfig, ToolConfig } from '../config.js';
 import { expandEnvVars, unexpandEnvVars, combineEnvVars } from '../utils/env-var-utils.js';
+import { resolveTimeoutOptions } from '../utils/timeout-utils.js';
 import { JsonObject } from '../types/json.js';
 
 // Custom client for handling custom tools
@@ -215,7 +216,8 @@ For example, to use the Edit tool from claude_code, your request would look like
     requestArgs: Record<string, unknown> | undefined,
     meta?: { progressToken?: string | number },
     serverConfigs?: Record<string, ServerConfig>,
-    globalEnvVars?: EnvVarConfig[]
+    globalEnvVars?: EnvVarConfig[],
+    globalTimeoutSec?: number
   ) {
     if (!requestArgs) {
       throw new Error('Missing required parameters');
@@ -251,6 +253,9 @@ For example, to use the Edit tool from claude_code, your request would look like
 
       const serverConfig = serverConfigs?.[client.name];
 
+      // Resolve timeout options: per-server overrides global
+      const timeoutOptions = resolveTimeoutOptions(globalTimeoutSec, serverConfig?.timeout);
+
       // Combine global and server-specific environment variables
       const combinedEnvVars = combineEnvVars(globalEnvVars, serverConfig?.envVars);
 
@@ -258,20 +263,24 @@ For example, to use the Edit tool from claude_code, your request would look like
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const expandedArgs = expandEnvVars(toolArgs as JsonObject, combinedEnvVars);
 
-      // Call the actual tool on the target server
-      const result = await client.client.request(
-        {
-          method: 'tools/call',
-          params: {
-            name: tool,
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-            arguments: expandedArgs as Record<string, unknown>,
-            _meta: {
-              progressToken: meta?.progressToken,
-            },
+      // Prepare the tool call request
+      const toolCallRequest = {
+        method: 'tools/call' as const,
+        params: {
+          name: tool,
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          arguments: expandedArgs as Record<string, unknown>,
+          _meta: {
+            progressToken: meta?.progressToken,
           },
         },
-        CompatibilityCallToolResultSchema
+      };
+
+      // Call the actual tool on the target server
+      const result = await client.client.request(
+        toolCallRequest,
+        CompatibilityCallToolResultSchema,
+        timeoutOptions
       );
 
       logCustomToolResponse(result);

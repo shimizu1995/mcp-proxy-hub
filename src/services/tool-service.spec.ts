@@ -58,12 +58,46 @@ describe('ToolService', () => {
             _meta: undefined,
           },
         },
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
 
       expect(result).toHaveLength(2);
       expect(result[0].description).toBe('[testClient] Tool 1');
       expect(result[1].description).toBe('[testClient] Tool 2');
+    });
+
+    it('should forward timeout options to client.request when provided', async () => {
+      const toolsResponse: ToolsResponse = { tools: [] };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      const options = { timeout: 5000 };
+      await toolService.fetchToolsFromClient(mockClient, undefined, undefined, options);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/list',
+          params: { _meta: undefined },
+        },
+        expect.any(Object),
+        options
+      );
+    });
+
+    it('should pass undefined as options to client.request when none is provided', async () => {
+      const toolsResponse: ToolsResponse = { tools: [] };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(toolsResponse);
+
+      await toolService.fetchToolsFromClient(mockClient);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/list',
+          params: { _meta: undefined },
+        },
+        expect.any(Object),
+        undefined
+      );
     });
 
     it('should return empty array when tools response is not an array', async () => {
@@ -121,7 +155,8 @@ describe('ToolService', () => {
             _meta: meta,
           },
         },
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
     });
 
@@ -185,7 +220,8 @@ describe('ToolService', () => {
             _meta: undefined,
           },
         },
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
 
       expect(result).toBe(mockResult);
@@ -212,7 +248,8 @@ describe('ToolService', () => {
             _meta: undefined,
           },
         },
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
     });
 
@@ -232,7 +269,8 @@ describe('ToolService', () => {
             _meta: meta,
           },
         },
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
     });
 
@@ -241,6 +279,54 @@ describe('ToolService', () => {
 
       await expect(toolService.executeToolCall('tool1', {}, mockClient)).rejects.toThrow(
         'Client error'
+      );
+    });
+
+    it('should forward timeout options to client.request when provided', async () => {
+      const mockResult = { result: 'success' };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(mockResult);
+
+      const options = { timeout: 10000 };
+      await toolService.executeToolCall(
+        'tool1',
+        { param1: 'value1' },
+        mockClient,
+        undefined,
+        undefined,
+        options
+      );
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'tool1',
+            arguments: { param1: 'value1' },
+            _meta: undefined,
+          },
+        },
+        expect.any(Object),
+        options
+      );
+    });
+
+    it('should pass undefined as options to client.request when none is provided', async () => {
+      const mockResult = { result: 'success' };
+      vi.mocked(mockClient.client.request).mockResolvedValueOnce(mockResult);
+
+      await toolService.executeToolCall('tool1', {}, mockClient);
+
+      expect(mockClient.client.request).toHaveBeenCalledWith(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'tool1',
+            arguments: {},
+            _meta: undefined,
+          },
+        },
+        expect.any(Object),
+        undefined
       );
     });
   });

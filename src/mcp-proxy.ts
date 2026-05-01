@@ -45,10 +45,16 @@ export const createProxyServer = () => {
 
   server.setRequestHandler(ListToolsRequestSchema, (request) => {
     const connectedClients = getConnectedClient();
-    return handleListToolsRequest(request, connectedClients, config.mcpServers || {}, {
-      mcpServers: config.mcpServers || {},
-      tools: config.tools,
-    });
+    return handleListToolsRequest(
+      request,
+      connectedClients,
+      config.mcpServers || {},
+      {
+        mcpServers: config.mcpServers || {},
+        tools: config.tools,
+      },
+      config.timeout
+    );
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
