@@ -88,10 +88,10 @@ const createClient = (
             });
           }
         : undefined;
-      transport = new StreamableHTTPClientTransport(new URL(config.url), {
-        fetch: customFetch,
-        authProvider,
-      });
+      const opts: ConstructorParameters<typeof StreamableHTTPClientTransport>[1] = {};
+      if (customFetch) opts.fetch = customFetch;
+      if (authProvider) opts.authProvider = authProvider;
+      transport = new StreamableHTTPClientTransport(new URL(config.url), opts);
     } else {
       console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
       console.debug(`cwd is ${process.cwd()}`);
@@ -202,7 +202,11 @@ const connectWithRetry = async (
         }
       }
 
-      console.error(`Failed to connect to ${serverName}:`, error);
+      const errInfo =
+        error instanceof Error
+          ? `${error.name}: ${error.message}\n${error.stack ?? ''}`
+          : String(error);
+      console.error(`Failed to connect to ${serverName}: ${errInfo}`);
       authProvider?.endAuthAttempt();
       await safeClose(client, transport);
       count++;
