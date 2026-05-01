@@ -2,9 +2,11 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { ServerConfig } from './config.js';
+import { ServerConfig, isStreamableHttpConfig } from './config.js';
 import { clientMaps } from './mappers/client-maps.js';
+import { ProxyOAuthProvider } from './auth/oauth-provider.js';
 import { FetchLike } from 'eventsource';
 
 const sleep = (time: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), time));
@@ -22,9 +24,37 @@ const CONNECTION_RETRY_CONFIG = {
   retries: 3,
 };
 
+// Serializes browser-launching OAuth flows so users only see one auth tab at a time.
+let authMutex: Promise<void> = Promise.resolve();
+const serializeAuth = <T>(fn: () => Promise<T>): Promise<T> => {
+  const next = authMutex.then(fn, fn);
+  authMutex = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
+};
+
+const safeClose = async (
+  client: Client | undefined,
+  transport: Transport | undefined
+): Promise<void> => {
+  try {
+    await client?.close();
+  } catch {
+    /* empty */
+  }
+  try {
+    await transport?.close();
+  } catch {
+    /* empty */
+  }
+};
+
 const createClient = (
   serverName: string,
-  config: ServerConfig
+  config: ServerConfig,
+  authProvider?: ProxyOAuthProvider
 ): { client: Client | undefined; transport: Transport | undefined } => {
   let transport: Transport | null = null;
   try {
@@ -44,7 +74,7 @@ const createClient = (
       transport = new SSEClientTransport(new URL(config.url), {
         eventSourceInit: { fetch: customFetch },
       });
-    } else if (config.type === 'streamable-http') {
+    } else if (isStreamableHttpConfig(config)) {
       const configHeaders = config.headers;
       const customFetch = configHeaders
         ? (url: string | URL | Request, init?: RequestInit) => {
@@ -60,6 +90,7 @@ const createClient = (
         : undefined;
       transport = new StreamableHTTPClientTransport(new URL(config.url), {
         fetch: customFetch,
+        authProvider,
       });
     } else {
       console.debug(`${serverName} config: ${JSON.stringify(config, null, 2)}`);
@@ -106,11 +137,13 @@ const createClient = (
 };
 
 /**
- * Attempts to connect to an MCP server with retry logic
- * @param serverName The name of the server to connect to
- * @param config Server transport configuration
- * @param onConnect Callback function to execute on successful connection
- * @returns The connected client or null if connection failed
+ * Attempts to connect to an MCP server with retry logic.
+ *
+ * For streamable-http transports an OAuth provider is attached. If the upstream
+ * requires OAuth, the SDK triggers a browser-based authorization-code flow on
+ * the loopback interface; we catch the resulting UnauthorizedError, exchange
+ * the captured code for tokens via transport.finishAuth(), and re-attempt the
+ * connection once without consuming a retry slot.
  */
 const connectWithRetry = async (
   serverName: string,
@@ -118,30 +151,62 @@ const connectWithRetry = async (
   onConnect: (client: Client, transport: Transport) => Promise<ConnectedClient>
 ): Promise<ConnectedClient | null> => {
   const { waitFor, retries } = CONNECTION_RETRY_CONFIG;
-  let count = 0;
-  let retry = true;
+  const useOAuth = isStreamableHttpConfig(config);
 
-  while (retry) {
-    const { client, transport } = createClient(serverName, config);
+  let count = 0;
+  let oauthRetried = false;
+
+  while (count <= retries) {
+    let authProvider: ProxyOAuthProvider | undefined;
+    if (useOAuth) {
+      authProvider = new ProxyOAuthProvider({
+        serverName,
+        serverUrl: config.url,
+        serializeAuth,
+      });
+      await authProvider.beginAuthAttempt();
+    }
+
+    const { client, transport } = createClient(serverName, config, authProvider);
     if (!client || !transport) {
+      authProvider?.endAuthAttempt();
       return null;
     }
 
     try {
       await client.connect(transport);
       console.log(`Connected to server: ${serverName}`);
-
+      authProvider?.endAuthAttempt();
       return await onConnect(client, transport);
     } catch (error) {
-      console.error(`Failed to connect to ${serverName}:`, error);
-      count++;
-      retry = count < retries;
-      if (retry) {
-        try {
-          await client.close();
-        } catch {
-          /* empty */
+      if (
+        error instanceof UnauthorizedError &&
+        authProvider &&
+        !oauthRetried &&
+        transport instanceof StreamableHTTPClientTransport
+      ) {
+        const code = authProvider.consumeAuthCode();
+        if (code) {
+          try {
+            await transport.finishAuth(code);
+            oauthRetried = true;
+            authProvider.endAuthAttempt();
+            await safeClose(client, transport);
+            // Re-attempt immediately with the freshly persisted tokens.
+            continue;
+          } catch (finishErr) {
+            console.error(`OAuth token exchange failed for ${serverName}:`, finishErr);
+          }
+        } else {
+          console.error(`OAuth authorization required for ${serverName} but no code was captured.`);
         }
+      }
+
+      console.error(`Failed to connect to ${serverName}:`, error);
+      authProvider?.endAuthAttempt();
+      await safeClose(client, transport);
+      count++;
+      if (count <= retries) {
         console.log(`Retry connect to ${serverName} in ${waitFor}ms (${count}/${retries})`);
         await sleep(waitFor);
       }

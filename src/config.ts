@@ -42,7 +42,7 @@ export type TransportConfigSSE = {
 };
 
 export type TransportConfigStreamableHTTP = {
-  type: 'streamable-http';
+  type: 'streamable-http' | 'http';
   url: string;
   headers?: Record<string, string>;
   env?: Record<string, string>;
@@ -81,12 +81,27 @@ export interface AuthConfig {
 }
 
 export interface ServerTransportConfig {
-  type: 'stdio' | 'sse' | 'streamable-http';
+  type: 'stdio' | 'sse' | 'streamable-http' | 'http';
   port?: number;
   host?: string;
   path?: string;
   auth?: AuthConfig;
 }
+
+export type NormalizedTransportType = 'stdio' | 'sse' | 'streamable-http';
+
+export const normalizeTransportType = (
+  type: string | undefined
+): NormalizedTransportType | undefined => {
+  if (type === 'http') return 'streamable-http';
+  if (type === 'stdio' || type === 'sse' || type === 'streamable-http') return type;
+  return undefined;
+};
+
+export const isStreamableHttpConfig = (
+  config: ServerConfig
+): config is TransportConfigStreamableHTTP =>
+  config.type === 'streamable-http' || config.type === 'http';
 
 export interface Config {
   mcpServers: ServerConfigs;

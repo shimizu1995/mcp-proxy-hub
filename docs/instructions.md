@@ -18,3 +18,33 @@ After completing your modifications, run `npm run test:unit` and `npm run test:t
 **IMPORTANT**: Don't delete existing test cases when modifying the code to pass the tests.
 
 After these commands execute successfully, run `npm run format && npm run lint` to ensure the code is properly formatted and adheres to the linting rules.
+
+## OAuth for upstream `streamable-http` / `http` servers
+
+The `streamable-http` transport (and its `http` alias) supports OAuth automatically. When an upstream MCP server replies with `401 Unauthorized` and advertises OAuth metadata (RFC 9728), the proxy will:
+
+- Perform RFC 7591 dynamic client registration.
+- Spin up a one-shot listener on `http://127.0.0.1:<random-port>/callback`.
+- Open the user's default browser to the authorization URL (PKCE).
+- Persist the resulting client info and tokens under `~/.mcp-proxy-hub/oauth/<sha16(serverUrl)>/`.
+- Refresh tokens silently afterwards.
+
+No OAuth fields are required in `config.json` — just declare the server:
+
+```json
+{
+  "iris": {
+    "type": "http",
+    "url": "https://iris.labo.makick.jp/mcp"
+  }
+}
+```
+
+To clear cached credentials (e.g. after revoking access or changing scopes):
+
+```bash
+mcp-proxy-hub-cli auth clear              # clear all servers
+mcp-proxy-hub-cli auth clear iris         # clear a single server
+```
+
+Set `MCP_PROXY_OAUTH_DIR` to override the cache location, or `MCP_PROXY_NO_BROWSER=1` to suppress automatic browser launch (the URL is logged instead).
