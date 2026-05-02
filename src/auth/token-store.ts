@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { createHash } from 'crypto';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
 import { join, dirname } from 'path';
 import type {
   OAuthClientInformationFull,
@@ -14,8 +14,24 @@ export interface PersistedDiscovery {
   resourceMetadata?: unknown;
 }
 
-const baseDir = (): string =>
-  process.env.MCP_PROXY_OAUTH_DIR ?? join(homedir(), '.mcp-proxy-hub', 'oauth');
+const safeHomedir = (): string => {
+  try {
+    const home = homedir();
+    if (typeof home === 'string' && home.length > 0) return home;
+  } catch {
+    /* fall through */
+  }
+  // Sandboxed environments (some MCP host launchers) may strip $HOME and
+  // leave getpwuid_r() with no entry, making os.homedir() unusable. Fall
+  // back to tmpdir so token persistence still works for the session.
+  return tmpdir();
+};
+
+const baseDir = (): string => {
+  const override = process.env.MCP_PROXY_OAUTH_DIR;
+  if (typeof override === 'string' && override.length > 0) return override;
+  return join(safeHomedir(), '.mcp-proxy-hub', 'oauth');
+};
 
 export const serverKey = (serverUrl: string): string =>
   createHash('sha256').update(serverUrl).digest('hex').slice(0, 16);
@@ -41,7 +57,10 @@ const readJson = async <T>(path: string): Promise<T | undefined> => {
     return JSON.parse(data);
   } catch (err) {
     if (isErrnoException(err) && err.code === 'ENOENT') return undefined;
-    throw err;
+    // Any other failure (corrupt JSON, permission denied, missing home) must
+    // not crash the connect path: behave as if no state has been persisted.
+    console.warn(`Failed to read ${path}: ${err instanceof Error ? err.message : String(err)}`);
+    return undefined;
   }
 };
 
