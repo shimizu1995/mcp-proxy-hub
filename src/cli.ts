@@ -11,6 +11,11 @@ import { CallToolRequest, ListToolsRequest } from '@modelcontextprotocol/sdk/typ
 import { createDefaultLogger, LogLevel } from './utils/logger.js';
 import 'dotenv/config';
 import { createClients, getConnectedClient } from './client.js';
+import {
+  clearForServer as clearOAuthForServer,
+  clearAll as clearAllOAuth,
+} from './auth/token-store.js';
+import { isStreamableHttpConfig } from './config.js';
 
 const logger = createDefaultLogger({
   dirPath: process.env.MCP_PROXY_LOG_DIRECTORY_PATH,
@@ -205,6 +210,36 @@ async function main() {
       await createClients(config.mcpServers);
       await handleListCommand(config);
       await handleCallCommand(toolName, args, options, config);
+      process.exit(0);
+    });
+
+  const authCmd = program.command('auth').description('Manage cached OAuth credentials');
+  authCmd
+    .command('clear')
+    .description('Clear cached OAuth tokens for a server (or all servers if omitted)')
+    .argument('[serverName]', 'Server name from config to clear; omit to clear every cached server')
+    .action(async (serverName?: string) => {
+      const config = await loadConfig();
+      if (!serverName) {
+        await clearAllOAuth();
+        console.log('Cleared all cached OAuth credentials.');
+        process.exit(0);
+      }
+      const serverConfig = config.mcpServers?.[serverName];
+      if (!serverConfig) {
+        console.error(`Server "${serverName}" not found in config.`);
+        process.exit(1);
+      }
+      if (!isStreamableHttpConfig(serverConfig)) {
+        console.error(`Server "${serverName}" is not a streamable-http/http server.`);
+        process.exit(1);
+      }
+      const cleared = await clearOAuthForServer(serverConfig.url);
+      if (cleared) {
+        console.log(`Cleared cached OAuth credentials for "${serverName}".`);
+      } else {
+        console.log(`No cached OAuth credentials found for "${serverName}".`);
+      }
       process.exit(0);
     });
 

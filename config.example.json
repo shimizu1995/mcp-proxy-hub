@@ -37,6 +37,10 @@
       "headers": {
         "Authorization": "Bearer <token>"
       }
+    },
+    "Example Server 5 (http alias, OAuth)": {
+      "type": "http",
+      "url": "https://example.com/mcp"
     }
   },
   "serverTransport": {
